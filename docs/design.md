@@ -214,7 +214,7 @@ JOSE 头 `typ` 必须是 `at+jwt`（也接受 `application/at+jwt`，不区分�
 
 **密钥管理**：
 - 签名私钥存放在 KMS 或 K8s Secret 中，各机房共用同一套。
-- JWKS 在轮换前同时发布当前密钥和下一把密钥；轮换完成后，在 access token 最长有效期加缓冲时间内继续发布上一把密钥，到期后再下线。每 90 天轮换一次。
+- JWKS 在轮换前同时发布当前密钥和下一把密钥。轮换完成后，上一把密钥继续发布的时长为 access token 最长有效期加上 `previous_key_buffer`。该项是认证中心配置，整数秒，默认 60（1 分钟）。按当前草案，access token 最长有效期为 m2m 的 30 分钟，因此上一把密钥默认一共继续发布 1860 秒（1800 + 60）。每 90 天轮换一次。
 - 认证中心启动时如果发现签名密钥与 `conformance/keys/` 中的测试密钥相同，必须拒绝启动。
 
 ### 5.3 会话管理
@@ -268,7 +268,7 @@ auth:revoked:sid                 SET   最近被吊销的 sid（TTL >= access to
 
 `id` 必填，消费方按 `id` 幂等去重。`type` 取 `session`、`app_session`、`user`、`client`：`session` 必须带 `sid`，`app_session` 必须带 `asid`，`user` 必须带 `sub` 和 `not_before`，`client` 必须带 `client_id` 和 `not_before`。`dc` 是触发吊销的机房。
 
-`reason` 共 9 种：`logout`、`admin_kick`、`policy_kick_oldest`、`idle_timeout`、`absolute_timeout`、`refresh_reused`、`risk`、`client_disabled`、`user_disabled`。管理端强制下线接口只接受其中的 `admin_kick`（默认）、`risk`、`user_disabled`；其余 6 种由登出、会话策略、刷新重放检测和客户端停用等平台逻辑产生，不通过该请求体提交。事件的 `type` 由调用的接口决定，与 `reason` 无关。
+`reason` 共 9 种，管理端强制下线接口与吊销事件使用同一份枚举：`logout`、`admin_kick`、`policy_kick_oldest`、`idle_timeout`、`absolute_timeout`、`refresh_reused`、`risk`、`client_disabled`、`user_disabled`。请求未带 `reason` 时默认为 `admin_kick`。事件的 `type` 由调用的接口决定，与 `reason` 无关。
 
 命中任意一条即视为已吊销：
 

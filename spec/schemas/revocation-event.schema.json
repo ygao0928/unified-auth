@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://unified-auth.spec/schemas/revocation-event.schema.json",
   "title": "Revocation Event (auth.revoked)",
-  "description": "会话/用户/客户端吊销事件。经 MQ（内网）或 SSE /api/v1/revocations/stream（公网/独立部署）下发。匹配规则见 token-validation.md#吊销匹配。消费方必须按 id 幂等去重。reason 共 9 种，是吊销原因的完整枚举。其中 logout、policy_kick_oldest、idle_timeout、absolute_timeout、refresh_reused、client_disabled 由平台产生；admin_kick、risk、user_disabled 可由管理端 RevokeRequest 提交（见 OpenAPI）。事件 type 由产生方决定，与 reason 无关。user/client 类型用 not_before 与 token.iat 比较，吊销之后新签发的 token 不受影响。",
+  "description": "会话/用户/客户端吊销事件。经 MQ（内网）或 SSE /api/v1/revocations/stream（公网/独立部署）下发。匹配规则见 token-validation.md#吊销匹配。消费方必须按 id 幂等去重。reason 共 9 种，与管理端 RevokeRequest.reason 使用同一份枚举。事件 type 由产生方决定，与 reason 无关。user/client 类型用 not_before 与 token.iat 比较，吊销之后新签发的 token 不受影响。",
   "type": "object",
   "required": ["id", "event", "type", "ts", "reason"],
   "properties": {
