@@ -26,8 +26,8 @@ P0 的契约文件在仓库里已有草案。下面仍把它们列为 P0 任务�
 | P1-INF-01 | 会话 Redis 与配置库 | 按 §5.3.1 落 Redis 键。配置与用户落在 PostgreSQL | — | 3 | 全局会话、应用会话、refresh token 可按键读写。`auth:rt` 的 TTL 等于该客户端的 `refresh_token_ttl` |
 | P1-AC-01 | Go 服务骨架 | Go 1.23+，HTTP 框架用 Chi（兼容 net/http） | — | 2 | 进程可启动，健康检查可用 |
 | P1-AC-02 | 上游可插拔层与 OIDC 适配 | `IdentityProvider` 接口。P1 实现 OIDC 上游适配，使试点能登录。CAS 与 SAML 2.0 仍是必做范围，见 P6-AC-01、P6-AC-02 | P1-AC-01 | 6 | 用 OIDC 上游完成登录跳转与回调，得到 `Identity`（工号必填） |
-| P1-AC-03 | 属性映射与用户落库 | 每个身份源一份 `attribute_mapping`。首次登录按工号建用户并给默认角色；空属性不覆盖已有值 | P1-AC-02 | 2 | 缺属性时登录仍成功 |
-| P1-AC-04 | 授权码、PKCE 与刷新 | `authorize`（只接受 S256）、`token` 的 authorization_code 与 refresh_token。refresh 每次轮换，新 token 从轮换当时起重新计算 `refresh_token_ttl`。重放旧 token 吊销整条会话链并返回 `AUTH_REFRESH_REUSED` | P1-AC-01、P1-INF-01 | 5 | 试点浏览器能走完授权码。连续刷新时，每次得到的 refresh token 都重新计算有效期 |
+| P1-AC-03 | 属性映射与用户落库 | 每个身份源一份 `attribute_mapping`。首次登录按工号建用户并授予 `default:viewer`（全局只读，`data_scope` 为 `self`，只在插入时授予，不补授）；空属性不覆盖已有值 | P1-AC-02 | 2 | 缺属性时登录仍成功。新用户有 `default:viewer`，再次登录不会重新授予 |
+| P1-AC-04 | 授权码、PKCE 与刷新 | `authorize`（只接受 S256）、`token` 的 authorization_code 与 refresh_token。无密钥的 web / app / miniapp 在 PKCE S256 下可以不带客户端认证换票和刷新；ssr、m2m 以及配置了密钥的客户端必须认证。refresh 每次轮换，新 token 从轮换当时起重新计算 `refresh_token_ttl`。重放旧 token 吊销整条会话链并返回 `AUTH_REFRESH_REUSED`。公开客户端同样轮换并检测重放 | P1-AC-01、P1-INF-01 | 5 | 试点浏览器能走完授权码。连续刷新时，每次得到的 refresh token 都重新计算有效期 |
 | P1-AC-05 | Access Token 与 JWKS | `typ=at+jwt`，算法只允许 RS256 / ES256。有效期按 §5.2：客户端覆盖，否则用全局默认；用户 access token 默认 600 秒，且不超过 `access_token_ttl_cap`（默认 1800）。启动时拒绝与 `conformance/keys/` 相同的签名密钥 | P1-AC-04 | 3 | `/.well-known/openid-configuration` 与 `/oauth2/jwks` 可用。JWKS `Cache-Control: max-age=600` |
 | P1-AC-06 | 全局会话的空闲与绝对时长 | 刷新时检查 `idle_timeout`、`absolute_session_ttl`，以及当前这张 refresh token 是否仍在 `refresh_token_ttl` 内（全局默认 600 秒，从签发或上次轮换起算）。先到期者拒绝刷新，返回 `AUTH_LOGIN_REQUIRED` | P1-INF-01、P1-AC-04 | 3 | 超过 600 秒没有轮换则不能再刷新。在 600 秒内持续轮换时，会话继续，直到空闲超时或绝对时长 |
 | P1-AC-07 | 基础审计 | 登录成功、登录失败按 `audit-event.schema.json` 记录。`actor` 为对象。不记录 token、密码、ticket 原文。长期保存见 P7-AUD-01；ES 或 ClickHouse 不代选 | P1-AC-03 | 2 | 一次成功登录和一次失败登录能查出符合 schema 的事件 |
@@ -124,7 +124,7 @@ P0 的契约文件在仓库里已有草案。下面仍把它们列为 P0 任务�
 | P7-INF-01 | 多机房会话 | `sid` 带机房前缀。刷新落到其他机房时转发回原机房，或用 GSLB 固定机房（R5）。机房故障时该机房会话失效，用户重新登录 | P1-AC-06、P4-BUS-02 | 4 | 演练：一台房停止后，另一机房的新登录仍可用；故障机房的旧会话不再刷新 |
 | P7-BUS-01 | Kafka 版 EventBus | 同一接口的第二实现。每个 SDK 实例单独的 consumer group，从而仍然广播 | P4-BUS-01 | 4 | 切到 Kafka 后，P4 的双实例收齐事件仍然成立 |
 | P7-BUS-02 | MirrorMaker 2 | 主题跨机房复制，替代「发布方写每个机房 Redis」 | P7-BUS-01 | 2 | 一个机房发布的事件出现在另一个机房的主题上 |
-| P7-AC-01 | 签名密钥轮换 | 每 90 天轮换。轮换前 JWKS 同时有当前密钥和下一把；轮换后上一把再保留 `access_token_ttl_cap + previous_key_buffer`（默认 1860 秒） | P1-AC-05 | 3 | 轮换窗口内，旧 `kid` 与新 `kid` 都能验过 |
+| P7-AC-01 | 签名密钥轮换与 KMS | P1 从 PEM 文件或 Kubernetes Secret 挂载加载密钥，不接 KMS。本任务做每 90 天轮换，并改为从 KMS 读取。轮换前 JWKS 同时有当前密钥和下一把；轮换后上一把再保留 `access_token_ttl_cap + previous_key_buffer`（默认 1860 秒） | P1-AC-05 | 3 | 轮换窗口内，旧 `kid` 与新 `kid` 都能验过 |
 | P7-AUD-01 | 审计长期存储 | 只追加、不可改。保存不少于 6 个月。查询权限仅审计员，查询本身写 `audit.query`。ES 或 ClickHouse 不代选 | P1-AC-07 | 3 | 超出保存期之前的记录仍可查；一次查询产生审计 |
 | P7-ADM-01 | 管理后台二次认证 | 上游没有 MFA 时叠加 TOTP（R1）。上游若已有 MFA，不重复发明第二套 | P1-ADM-01 | 2 | 未完成二次认证不能打开管理后台 |
 

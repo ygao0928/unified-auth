@@ -110,6 +110,51 @@ func TestClientAndUserRoundTrip(t *testing.T) {
 	if user.PermVer != 4 || !user.Disabled {
 		t.Fatalf("login overwrote perm_ver/disabled: %+v", user)
 	}
+	var (
+		roles  int
+		source string
+		scope  string
+		data   string
+	)
+	if err := pool.QueryRow(ctx, `
+		SELECT count(*), min(ur.grant_source), min(r.scope), min(r.data_scope)
+		FROM user_roles ur JOIN roles r ON r.id = ur.role_id
+		WHERE ur.emp_no = $1 AND ur.role_id = $2`, emp, DefaultRoleViewer).Scan(&roles, &source, &scope, &data); err != nil {
+		t.Fatal(err)
+	}
+	if roles != 1 || source != "default" || scope != "global" || data != "self" {
+		t.Fatalf("default role roles=%d source=%s scope=%s data=%s", roles, source, scope, data)
+	}
+	if _, err := pool.Exec(ctx, `DELETE FROM user_roles WHERE emp_no = $1`, emp); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.UpsertUserFromLogin(ctx, User{EmpNo: emp, Email: &newEmail}); err != nil {
+		t.Fatal(err)
+	}
+	if err := pool.QueryRow(ctx, `SELECT count(*) FROM user_roles WHERE emp_no = $1`, emp).Scan(&roles); err != nil {
+		t.Fatal(err)
+	}
+	if roles != 0 {
+		t.Fatalf("existing user was granted the default role again: %d", roles)
+	}
+}
+
+func TestIsPublic(t *testing.T) {
+	if !(Client{ClientType: config.ClientWeb}).IsPublic() {
+		t.Fatal("web")
+	}
+	if !(Client{ClientType: config.ClientApp}).IsPublic() {
+		t.Fatal("app")
+	}
+	if !(Client{ClientType: config.ClientMiniApp}).IsPublic() {
+		t.Fatal("miniapp")
+	}
+	if (Client{ClientType: config.ClientWeb, SecretHash: "x"}).IsPublic() {
+		t.Fatal("web with secret")
+	}
+	if (Client{ClientType: config.ClientSSR}).IsPublic() || (Client{ClientType: config.ClientM2M}).IsPublic() {
+		t.Fatal("ssr or m2m")
+	}
 }
 
 func TestClientSecretIsBcrypt(t *testing.T) {

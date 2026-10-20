@@ -77,6 +77,23 @@ func HashClientSecret(secret string, cost int) (string, error) {
 	return string(hashed), nil
 }
 
+// DefaultRoleViewer 是新用户第一次插入时授予的只读基础角色。
+const DefaultRoleViewer = "default:viewer"
+
+// IsPublic 表示没有密钥的浏览器、App 或小程序客户端。
+// 配了密钥的客户端，以及 ssr、m2m，都不是公开客户端。
+func (c Client) IsPublic() bool {
+	if c.SecretHash != "" {
+		return false
+	}
+	switch c.ClientType {
+	case config.ClientWeb, config.ClientApp, config.ClientMiniApp:
+		return true
+	default:
+		return false
+	}
+}
+
 // SecretMatches 报告明文是否对得上 bcrypt 哈希。空哈希或空明文一律不匹配。
 func (c Client) SecretMatches(secret string) bool {
 	if c.SecretHash == "" || secret == "" {
@@ -161,8 +178,9 @@ func (s *Store) GetClient(ctx context.Context, clientID string) (Client, error) 
 	return c, nil
 }
 
-// UpsertUserFromLogin 首次插入用户。再次登录只刷新非空属性，空值不覆盖已有值。
-// 不授予默认角色，那是 P1-AC-03 尚未完成的部分。
+// UpsertUserFromLogin 首次插入用户并授予 default:viewer。
+// 再次登录只刷新非空属性，空值不覆盖已有值，也不补授角色。
+// perm_ver 与 disabled 不在这里改。
 func (s *Store) UpsertUserFromLogin(ctx context.Context, u User) error {
 	if u.EmpNo == "" {
 		return errors.New("emp_no is required")
@@ -173,16 +191,28 @@ func (s *Store) UpsertUserFromLogin(ctx context.Context, u User) error {
 	u.DeptID = blankToNil(u.DeptID)
 	u.DeptName = blankToNil(u.DeptName)
 	_, err := s.pool.Exec(ctx, `
-		INSERT INTO users (emp_no, name, email, mobile, dept_id, dept_name)
-		VALUES ($1, $2, $3, $4, $5, $6)
-		ON CONFLICT (emp_no) DO UPDATE SET
-			name = COALESCE(EXCLUDED.name, users.name),
-			email = COALESCE(EXCLUDED.email, users.email),
-			mobile = COALESCE(EXCLUDED.mobile, users.mobile),
-			dept_id = COALESCE(EXCLUDED.dept_id, users.dept_id),
-			dept_name = COALESCE(EXCLUDED.dept_name, users.dept_name),
-			updated_at = now()`,
-		u.EmpNo, u.Name, u.Email, u.Mobile, u.DeptID, u.DeptName)
+		WITH inserted AS (
+			INSERT INTO users (emp_no, name, email, mobile, dept_id, dept_name)
+			VALUES ($1, $2, $3, $4, $5, $6)
+			ON CONFLICT (emp_no) DO NOTHING
+			RETURNING emp_no
+		),
+		updated AS (
+			UPDATE users SET
+				name = COALESCE($2, users.name),
+				email = COALESCE($3, users.email),
+				mobile = COALESCE($4, users.mobile),
+				dept_id = COALESCE($5, users.dept_id),
+				dept_name = COALESCE($6, users.dept_name),
+				updated_at = now()
+			WHERE emp_no = $1
+				AND NOT EXISTS (SELECT 1 FROM inserted)
+			RETURNING emp_no
+		)
+		INSERT INTO user_roles (emp_no, role_id, grant_source)
+		SELECT emp_no, $7, 'default' FROM inserted
+		ON CONFLICT (emp_no, role_id) DO NOTHING`,
+		u.EmpNo, u.Name, u.Email, u.Mobile, u.DeptID, u.DeptName, DefaultRoleViewer)
 	return err
 }
 

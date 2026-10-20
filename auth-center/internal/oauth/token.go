@@ -20,7 +20,7 @@ func (h *Handler) token(w http.ResponseWriter, r *http.Request) {
 		h.writeErr(w, r, http.StatusBadRequest, apierr.CodeInvalidRequest, "request body is not a valid form", "invalid_request")
 		return
 	}
-	client, ok := h.authenticate(r)
+	client, ok := h.resolveClient(r)
 	if !ok {
 		w.Header().Set("WWW-Authenticate", `Basic realm="auth-center"`)
 		// 错误码清单里没有 invalid_client。平台 code 用 INVALID_REQUEST，HTTP 状态按 RFC 6749 取 401。
@@ -226,9 +226,16 @@ func (h *Handler) writeToken(w http.ResponseWriter, resp tokenResponse) {
 	_ = json.NewEncoder(w).Encode(resp)
 }
 
-func (h *Handler) authenticate(r *http.Request) (pgstore.Client, bool) {
-	id, secret := clientCredentials(r)
-	if id == "" || secret == "" {
+// resolveClient 解析令牌端点的客户端。
+// 带了密钥就必须对上，不论公开还是机密。
+// 没带密钥时，只有无密钥的 web / app / miniapp，且 grant 是 authorization_code 或 refresh_token，才放行。
+// 授权码本身仍要过 PKCE S256。刷新不重新交 verifier，轮换和重放检测不变。
+func (h *Handler) resolveClient(r *http.Request) (pgstore.Client, bool) {
+	id, secret, presented := clientCredentials(r)
+	if id == "" {
+		if secret != "" {
+			_ = compareDummy(secret)
+		}
 		return pgstore.Client{}, false
 	}
 	client, err := h.store.GetClient(r.Context(), id)
@@ -236,27 +243,36 @@ func (h *Handler) authenticate(r *http.Request) (pgstore.Client, bool) {
 		_ = compareDummy(secret)
 		return pgstore.Client{}, false
 	}
-	if !client.SecretMatches(secret) || !client.Enabled {
-		return pgstore.Client{}, false
+	if presented {
+		if !client.SecretMatches(secret) || !client.Enabled {
+			return pgstore.Client{}, false
+		}
+		return client, true
 	}
-	return client, true
+	grant := r.PostFormValue("grant_type")
+	if client.Enabled && client.IsPublic() && (grant == "authorization_code" || grant == "refresh_token") {
+		return client, true
+	}
+	return pgstore.Client{}, false
 }
 
 func compareDummy(secret string) error {
 	return bcrypt.CompareHashAndPassword(dummyHash, []byte(secret))
 }
 
-func clientCredentials(r *http.Request) (string, string) {
-	if id, secret, ok := r.BasicAuth(); ok {
-		id, errID := url.QueryUnescape(id)
-		secret, errSecret := url.QueryUnescape(secret)
-		if errID != nil || errSecret != nil {
-			return "", ""
+func clientCredentials(r *http.Request) (id, secret string, secretPresented bool) {
+	if rawID, rawSecret, ok := r.BasicAuth(); ok {
+		var errID, errSecret error
+		id, errID = url.QueryUnescape(rawID)
+		secret, errSecret = url.QueryUnescape(rawSecret)
+		if errID != nil || errSecret != nil || id == "" {
+			return "", "", false
 		}
 		if formID := r.PostFormValue("client_id"); formID != "" && formID != id {
-			return "", ""
+			return "", "", false
 		}
-		return id, secret
+		return id, secret, true
 	}
-	return r.PostFormValue("client_id"), r.PostFormValue("client_secret")
+	secret = r.PostFormValue("client_secret")
+	return r.PostFormValue("client_id"), secret, secret != ""
 }

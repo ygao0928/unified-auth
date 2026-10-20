@@ -23,6 +23,8 @@ auth_code_ttl: 60
 authorize_txn_ttl: 600
 log:
   level: info
+# 签名私钥从 PEM 文件读取。生产把 Kubernetes Secret 挂到 pem_file。
+# AUTH_CENTER_KEY_ACTIVE_PEM_FILE 会替换整个 keys 列表。KMS 延后到 P7。
 keys:
   - alg: RS256
     pem_file: .dev-keys/active.pem

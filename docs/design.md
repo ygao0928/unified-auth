@@ -172,7 +172,7 @@ type Identity struct {
 - **三种上游都要做**：CAS、SAML 2.0、OIDC 都是必交付的适配器，挂在上面的接口上。P1 先实现 OIDC 上游适配，CAS 和 SAML 2.0 在 P6 补齐。以后可以再加其他协议，但不能因此少做这三种。
 - **属性映射可配置**：每个身份源配置一份 `attribute_mapping`，例如 CAS 返回的 `employeeNumber` 映射到 `EmpNo`，SAML 的 `urn:oid:...` 映射到 `Email`。
 - **多身份源并存**：只配置了一个身份源时直接跳转；配置了多个时，在认证中心的登录页提供选择，或者由客户端通过 `idp_hint` 参数指定。
-- **用户落库**：首次登录时以工号为键自动创建用户，并赋予默认角色；之后每次登录刷新可选属性。属性为空时不覆盖已有值。
+- **用户落库**：首次登录时以工号为键自动创建用户，并授予只读基础角色 `default:viewer`（全局角色，`data_scope` 为 `self`）。只在真正插入新用户时授予，之后的登录不补授。之后每次登录刷新可选属性。属性为空时不覆盖已有值。
 
 ### 5.2 Token 设计
 
@@ -219,7 +219,7 @@ JOSE 头 `typ` 必须是 `at+jwt`（也接受 `application/at+jwt`，不区分�
 全局默认下，单次 refresh token 与用户 access token 同为 600 秒，短于 `idle_timeout` 和 `absolute_session_ttl`。因为是滑动刷新，客户端在 600 秒内成功轮换就能继续，直到空闲超时或绝对时长。Redis 中 `auth:rt:{refresh_hash}` 的 TTL 取该客户端的 `refresh_token_ttl`，从该 token 签发或轮换时起算。
 
 **密钥管理**：
-- 签名私钥存放在 KMS 或 K8s Secret 中，各机房共用同一套。
+- P1 从 PEM 文件加载签名私钥，各机房挂同一套内容。配置写在 `keys[].pem_file`，或环境变量 `AUTH_CENTER_KEY_ACTIVE_PEM_FILE`（可选 `AUTH_CENTER_KEY_ACTIVE_KID`、`AUTH_CENTER_KEY_ACTIVE_ALG`）。下一把密钥用 `AUTH_CENTER_KEY_NEXT_PEM_FILE`、`AUTH_CENTER_KEY_NEXT_KID`、`AUTH_CENTER_KEY_NEXT_ALG`。设置了 active PEM 环境变量时，不再使用文件里的 `keys`。Kubernetes 上把 Secret 挂到这些路径。KMS 不在 P1，延后到 P7。
 - JWKS 在轮换前同时发布当前密钥和下一把密钥。轮换完成后，上一把密钥继续发布 `access_token_ttl_cap + previous_key_buffer` 秒。`previous_key_buffer` 是认证中心配置，整数秒，默认 60（1 分钟）。默认一共 1860 秒（1800 + 60）。不按某个客户端的较短有效期缩短这段时间：客户端可以把 access token 调到上限，窗口必须盖住这个上限。每 90 天轮换一次。
 - 认证中心启动时如果发现签名密钥与 `conformance/keys/` 中的测试密钥相同，必须拒绝启动。
 
@@ -312,6 +312,8 @@ SDK 在本地维护一个吊销集合。每条记录保留到 `event.ts + access
 - `client_credentials`
 - `urn:ietf:params:oauth:grant-type:token-exchange`（用于小程序和服务间的身份传递）
 
+公开客户端是没有 `client_secret` 的 `web`、`app`、`miniapp`（SPA、App、小程序）。授权码已经使用 PKCE S256 时，它们调用 `/oauth2/token` 的 `authorization_code` 和 `refresh_token` 可以不带客户端认证，但必须带 `client_id`。`ssr`、`m2m`，以及任何配置了密钥的客户端，都是机密客户端，换票和刷新都必须认证。公开客户端的 refresh token 仍然每次轮换，重放旧 token 仍然吊销整条会话链。带了密钥就必须和登记的哈希一致，公开客户端也不例外。
+
 ---
 
 ## 6. 客户端接入方案
@@ -326,6 +328,8 @@ SDK 在本地维护一个吊销集合。每条记录保留到 `event.ts + access
 | 移动 App | 授权码 + PKCE，使用系统浏览器（AppAuth） | Keychain / Keystore |
 | 小程序 | 首次登录通过 web-view 走 SSO 并绑定 openid；之后用 `wx.login` 静默换取 token | 小程序本地存储（只存 refresh token，加密后存放） |
 | 第三方 Open API | 机器调用用 `client_credentials` + scope；代表用户调用用授权码模式 + 用户授权页 | 由第三方保管 |
+
+纯前端 SPA、App、小程序按上表走授权码 + PKCE，不配置 `client_secret`。BFF 与 SSR 配置密钥，换票时必须认证。
 
 ### 6.2 Web BFF 登录时序
 
@@ -356,6 +360,8 @@ sequenceDiagram
     AC-->>APP: access_token / refresh_token / id_token
     APP-->>B: Set-Cookie(app_session, HttpOnly, Secure, SameSite=Lax)
 ```
+
+上面是 BFF，属于机密客户端，换票带 `client_secret`。纯前端 SPA、App、小程序不带密钥，只带 `client_id` 和 PKCE。
 
 ### 6.3 小程序登录时序
 
@@ -465,7 +471,7 @@ erDiagram
 - **全局角色**：可以包含任意应用的权限点，用于"平台管理员""审计员"这类跨应用角色。只有平台管理员可以管理全局角色。
 - **应用角色**：只能包含本应用的权限点，由该应用的管理员（`APP_ADMIN`）自行管理。
 - **数据范围**：作为角色的属性存在，从窄到宽为 `self` < `dept` < `dept_and_sub` < `all`。多个角色取最宽的一个；全部为 `null` 时结果为 `null`，由业务决定如何处理。权限接口返回的是未降级的值；结果是 `dept` 或 `dept_and_sub` 且 token 中 `dept_id` 为空时，由 SDK 降级为 `self`。
-- **默认角色**：首次登录时自动授予，作用是让"所有 SSO 用户都能登录"这个规则可以通过配置调整。
+- **默认角色**：角色 id 为 `default:viewer`，`scope` 为 `global`，名称 `viewer`，`data_scope` 为 `self`。这是只读基础角色，不带权限点。只在第一次插入用户时授予，`grant_source` 为 `default`。已经存在的用户再次登录不补授。
 
 ### 8.3 权限声明与同步
 
@@ -682,7 +688,7 @@ User {
 | P4 会话治理 | 2 周 | 多端策略、强制下线、吊销与权限变更事件（Redis Streams，发布方写入各机房；公网仍走 SSE）、单点登出 | 远程机房 Redis 可达时，下线操作 < 5 秒全局生效 |
 | P5 权限中心 | 3 周 | 应用、权限点、角色、全局角色、数据范围；`permissions.yaml` 同步；SDK 权限校验与缓存；授权下放 | 试点项目完成权限迁移 |
 | P6 多形态与兼容 | 3 周 | 补齐上游 CAS 与 SAML 2.0 适配，使三种上游都可用；移动 App、小程序（token exchange 和绑定）、Open API（client_credentials 和 scope）；下游 SAML 和 CAS 兼容通道 | 三种上游适配都可用；各形态 demo 通过 |
-| P7 多机房与合规 | 2 周 | 跨机房部署、事件通道可切换到 Kafka（MirrorMaker 2）、密钥轮换、审计长期存储、管理后台二次认证 | 机房故障演练、等保自查 |
+| P7 多机房与合规 | 2 周 | 跨机房部署、事件通道可切换到 Kafka（MirrorMaker 2）、签名密钥轮换与 KMS（P1 只从文件或 K8s Secret 挂载加载）、审计长期存储、管理后台二次认证 | 机房故障演练、等保自查 |
 | 持续 | — | 存量项目逐个迁移（迁移时用户重新登录）；SDK 版本治理 | — |
 
 ---
@@ -702,3 +708,6 @@ User {
 | D5 | refresh token 轮换后是否重新计算有效期 | — | 已决定：滑动刷新。每次轮换从当时起重新计算 `refresh_token_ttl`（默认 600 秒）。会话仍受空闲超时和绝对时长约束 |
 | D3 | 首批启用的下游兼容协议 | 排期 | 按第三方系统的实际需求排序 |
 | D4 | 小程序平台范围（微信 / 企业微信 / 钉钉） | 适配工作量 | 先做微信，其他平台按需增加 |
+| D6 | 默认角色 id | — | 已决定：`default:viewer`，全局只读，`data_scope` 为 `self`。仅首次插入用户时授予 |
+| D7 | 签名私钥存放 | — | 已决定：P1 从 PEM 文件或 Kubernetes Secret 挂载路径读取。KMS 延后到 P7 |
+| D8 | 公开客户端 | — | 已决定：无密钥的 web / app / miniapp 在 PKCE S256 下可以不认证调用 `authorization_code` 与 `refresh_token`。ssr、m2m 以及配置了密钥的客户端必须认证。公开客户端的 refresh 仍轮换并检测重放 |

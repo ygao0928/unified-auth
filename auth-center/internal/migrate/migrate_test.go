@@ -16,7 +16,7 @@ func TestMigrationNames(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(names) != 1 || names[0] != "0001_init.sql" {
+	if len(names) != 2 || names[0] != "0001_init.sql" || names[1] != "0002_default_role.sql" {
 		t.Fatalf("%v", names)
 	}
 }
