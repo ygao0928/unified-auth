@@ -85,7 +85,7 @@ paths:
       description: |
         支持的 grant_type：
         - `authorization_code`（必须带 code_verifier）
-        - `refresh_token`（每次轮换；重放旧 refresh token 吊销整个会话链并返回 AUTH_REFRESH_REUSED）
+        - `refresh_token`（每次轮换，新 refresh token 从轮换当时起重新计算 refresh_token_ttl；重放旧 refresh token 吊销整个会话链并返回 AUTH_REFRESH_REUSED。会话仍受 idle_timeout 与 absolute_session_ttl 约束）
         - `client_credentials`（m2m，签发 client_type=m2m 的 token）
         - `urn:ietf:params:oauth:grant-type:token-exchange`（小程序 wx code 换取、服务间身份传递）
 
@@ -493,7 +493,7 @@ components:
         refresh_token_ttl:
           type: integer
           minimum: 1
-          description: 仅用户客户端。省略时用全局默认 600 秒，与 absolute_session_ttl 无关。m2m 不签发 refresh token。刷新仍须同时满足 idle_timeout 与 absolute_session_ttl，先到期者生效
+          description: 仅用户客户端。省略时用全局默认 600 秒，与 absolute_session_ttl 无关。每次轮换从当时起重新计算。会话仍受 idle_timeout 与 absolute_session_ttl 约束，先到期者生效。m2m 不签发 refresh token
         idle_timeout:
           type: integer
           minimum: 1

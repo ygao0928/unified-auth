@@ -1,6 +1,6 @@
 # 开发任务分解
 
-本清单只拆 [`design.md`](design.md) §13 已经排进各阶段的工作，以及 [`spec/`](../spec/README.md)、[`conformance/`](../conformance/README.md) 里已经写明的验收条件。阶段日历以设计文档为准。表中的「人日」是单项工作量；同一阶段里可以并行，关键路径单独写在文末。未在 §14 决定的选型（Gin 或 Chi、PostgreSQL 或 MySQL、ES 或 ClickHouse、Vue3 或 React、P1 先做哪一种上游适配等）任务里不代选。
+本清单只拆 [`design.md`](design.md) §13 已经排进各阶段的工作，以及 [`spec/`](../spec/README.md)、[`conformance/`](../conformance/README.md) 里已经写明的验收条件。阶段日历以设计文档为准。表中的「人日」是单项工作量；同一阶段里可以并行，关键路径单独写在文末。未在 §14 决定的选型（Gin 或 Chi、PostgreSQL 或 MySQL、ES 或 ClickHouse、Vue3 或 React 等）任务里不代选。P1 上游适配已定为 OIDC，CAS 与 SAML 2.0 在 P6。
 
 P0 的契约文件在仓库里已有草案。下面仍把它们列为 P0 任务，方便对照验收，不表示要推倒重写。
 
@@ -25,14 +25,14 @@ P0 的契约文件在仓库里已有草案。下面仍把它们列为 P0 任务�
 |---|---|---|---|---|---|
 | P1-INF-01 | 会话 Redis 与配置库 | 按 §5.3.1 落 Redis 键。配置与用户落在 PostgreSQL 或 MySQL，二者不代选 | — | 3 | 全局会话、应用会话、refresh token 可按键读写。`auth:rt` 的 TTL 等于该客户端的 `refresh_token_ttl` |
 | P1-AC-01 | Go 服务骨架 | Go 1.23+。HTTP 框架用 Gin 或 Chi，不代选 | — | 2 | 进程可启动，健康检查可用 |
-| P1-AC-02 | 上游可插拔层与第一种适配 | `IdentityProvider` 接口。CAS、SAML 2.0、OIDC 都是必做范围，P1 只实现其中一种，使试点能登录。先做哪一种见文末开放问题 | P1-AC-01 | 6 | 登录跳转与回调得到 `Identity`（工号必填）。另外两种适配是 P6-AC-01、P6-AC-02 |
+| P1-AC-02 | 上游可插拔层与 OIDC 适配 | `IdentityProvider` 接口。P1 实现 OIDC 上游适配，使试点能登录。CAS 与 SAML 2.0 仍是必做范围，见 P6-AC-01、P6-AC-02 | P1-AC-01 | 6 | 用 OIDC 上游完成登录跳转与回调，得到 `Identity`（工号必填） |
 | P1-AC-03 | 属性映射与用户落库 | 每个身份源一份 `attribute_mapping`。首次登录按工号建用户并给默认角色；空属性不覆盖已有值 | P1-AC-02 | 2 | 缺属性时登录仍成功 |
-| P1-AC-04 | 授权码、PKCE 与刷新 | `authorize`（只接受 S256）、`token` 的 authorization_code 与 refresh_token。refresh 每次轮换，重放旧 token 吊销整条会话链并返回 `AUTH_REFRESH_REUSED` | P1-AC-01、P1-INF-01 | 5 | 试点浏览器能走完授权码并刷新一次 |
+| P1-AC-04 | 授权码、PKCE 与刷新 | `authorize`（只接受 S256）、`token` 的 authorization_code 与 refresh_token。refresh 每次轮换，新 token 从轮换当时起重新计算 `refresh_token_ttl`。重放旧 token 吊销整条会话链并返回 `AUTH_REFRESH_REUSED` | P1-AC-01、P1-INF-01 | 5 | 试点浏览器能走完授权码。连续刷新时，每次得到的 refresh token 都重新计算有效期 |
 | P1-AC-05 | Access Token 与 JWKS | `typ=at+jwt`，算法只允许 RS256 / ES256。有效期按 §5.2：客户端覆盖，否则用全局默认；用户 access token 默认 600 秒，且不超过 `access_token_ttl_cap`（默认 1800）。启动时拒绝与 `conformance/keys/` 相同的签名密钥 | P1-AC-04 | 3 | `/.well-known/openid-configuration` 与 `/oauth2/jwks` 可用。JWKS `Cache-Control: max-age=600` |
-| P1-AC-06 | 全局会话的空闲与绝对时长 | 刷新时检查 `idle_timeout` 与 `absolute_session_ttl`，并检查 refresh token 未超过 `refresh_token_ttl`（全局默认 600 秒）。先到期者拒绝刷新，返回 `AUTH_LOGIN_REQUIRED` | P1-INF-01、P1-AC-04 | 3 | 未覆盖的客户端在 600 秒后无法再刷新。空闲与绝对时长的检查逻辑仍在 |
+| P1-AC-06 | 全局会话的空闲与绝对时长 | 刷新时检查 `idle_timeout`、`absolute_session_ttl`，以及当前这张 refresh token 是否仍在 `refresh_token_ttl` 内（全局默认 600 秒，从签发或上次轮换起算）。先到期者拒绝刷新，返回 `AUTH_LOGIN_REQUIRED` | P1-INF-01、P1-AC-04 | 3 | 超过 600 秒没有轮换则不能再刷新。在 600 秒内持续轮换时，会话继续，直到空闲超时或绝对时长 |
 | P1-AC-07 | 基础审计 | 登录成功、登录失败按 `audit-event.schema.json` 记录。`actor` 为对象。不记录 token、密码、ticket 原文。长期保存见 P7-AUD-01；ES 或 ClickHouse 不代选 | P1-AC-03 | 2 | 一次成功登录和一次失败登录能查出符合 schema 的事件 |
 | P1-ADM-01 | 应用注册 | 管理后台注册应用，得到 `client_id` 与 `client_secret`，可配置回调地址、`client_type`、`session_policy`（`ClientLifetimes`）。前端 Vue3 或 React 不代选。OpenAPI 目前没有注册路径，实现时只使用设计已经写明的字段 | P1-AC-01、P1-INF-01 | 4 | 注册出的客户端能完成 P1 登录。未填的有效期等于 §5.2 全局默认 |
-| P1-DOC-01 | 试点登录说明 | 写明 P1 那种上游适配怎么配、回调地址和全局默认有效期 | P1-AC-02、P1-ADM-01 | 1 | 试点按文档能配通 |
+| P1-DOC-01 | 试点登录说明 | 写明 OIDC 上游怎么配、回调地址、滑动刷新和全局默认有效期 | P1-AC-02、P1-ADM-01 | 1 | 试点按文档能配通 |
 
 关键路径约 15 人日：P1-AC-01 → P1-AC-02 → P1-AC-04 → P1-AC-05。P1-INF-01、P1-ADM-01、P1-AC-07 并行。
 
@@ -103,8 +103,8 @@ P0 的契约文件在仓库里已有草案。下面仍把它们列为 P0 任务�
 
 | ID | 标题 | 说明 | 依赖 | 人日 | 交付 / 验收 |
 |---|---|---|---|---|---|
-| P6-AC-01 | 第二种上游适配 | 补齐 P1 未做的两种之一（CAS、SAML 2.0 或 OIDC） | P1-AC-02 | 5 | 该协议能登录并归一成 `Identity` |
-| P6-AC-02 | 第三种上游适配 | 补齐剩余一种。与 P6-AC-01 并行 | P1-AC-02 | 5 | CAS、SAML 2.0、OIDC 三种都能登录 |
+| P6-AC-01 | 上游 CAS 适配 | P1 已做 OIDC。本任务实现 CAS 上游适配，与 P6-AC-02 并行，不规定二者先后 | P1-AC-02 | 5 | CAS 登录能归一成 `Identity` |
+| P6-AC-02 | 上游 SAML 2.0 适配 | 实现 SAML 2.0 上游适配 | P1-AC-02 | 5 | CAS、SAML 2.0、OIDC 三种都能登录 |
 | P6-AC-03 | 小程序绑定与 token exchange | 首次 web-view 走 SSO 绑定 openid；之后用 `wx.login` 的 code 交换 token。未绑定返回 `AUTH_BINDING_REQUIRED` 与一次性 `bind_ticket`。企业微信、钉钉不在本任务 | P1-AC-05 | 5 | 未绑定与已绑定各走通一次 |
 | P6-AC-04 | client_credentials | m2m token：`sub` 为 `client:<id>`，无 `sid` / `asid` / refresh token。access token 默认 1800 秒，仍受 cap 限制。scope 不足返回 `SCOPE_INSUFFICIENT` | P1-AC-05 | 3 | 机器调用拿到的 User 中 `is_machine=true`，`emp_no=null` |
 | P6-AC-05 | 用户 token exchange | `subject_token_type` 为 access token，`audience` 为目标应用 | P1-AC-05 | 2 | 换出的 token 里 `aud` 可以是数组，`azp` 为发起方 |
@@ -113,7 +113,7 @@ P0 的契约文件在仓库里已有草案。下面仍把它们列为 P0 任务�
 | P6-JS-01 | JS SDK 的小程序交换 | 对接 P6-AC-03 | P6-AC-03、P2-JS-01 | 2 | 小程序 demo 能换到 token |
 | P6-DEMO-01 | 形态 demo | App（系统浏览器 + PKCE）、小程序、Open API、以及已启用的下游兼容通道 | P6-AC-03、P6-AC-04、P6-COMPAT-01、P6-COMPAT-02 | 3 | §13：各形态 demo 通过 |
 
-关键路径约 15 人日：P6-AC-03 → P6-JS-01，与两条上游适配、下游兼容通道并行。
+关键路径约 15 人日：P6-AC-03 → P6-JS-01，与 CAS / SAML 上游适配、下游兼容通道并行。
 
 ## P7 多机房与合规（日历 2 周）
 
@@ -156,7 +156,7 @@ flowchart LR
     P6 --> P7
 ```
 
-按 §13 的日历相加，P0 到 P7 为 1+3+2+2+3+3+2 = 16 周。P2 的验签与 P1 后半段并行，不另外加上整整 3 周。P2 的独立模式登录要等 P1 的授权码端点。P6 的第二种、第三种上游适配只依赖 P1 的接口，但阶段表把它们放在 P6，本清单不把它们提前。
+按 §13 的日历相加，P0 到 P7 为 1+3+2+2+3+3+2 = 16 周。P2 的验签与 P1 后半段并行，不另外加上整整 3 周。P2 的独立模式登录要等 P1 的授权码端点。CAS 与 SAML 上游适配只依赖 P1 的接口，但阶段表把它们放在 P6，本清单不把它们提前。
 
 先到达「试点能登录」的路径是 P0 → P1 → P3，其中 P2 的验签要在网关试点之前完成。
 
@@ -166,8 +166,6 @@ flowchart LR
 
 | 编号 | 事项 | 出处 |
 |---|---|---|
-| — | P1 先实现 CAS、SAML 2.0、OIDC 中的哪一种。三种都要做，只是 P1 与 P6 的分工未指定到协议名 | §13、§5.1 |
-| D5 | `refresh_token_ttl` 全局默认 600 秒。与用户 access token 相同，短于空闲超时和会话绝对时长。轮换后这 600 秒是否重计，未规定 | §5.2、§14 |
 | — | HTTP 框架 Gin 或 Chi | §4.2 |
 | — | PostgreSQL 或 MySQL | §4.2 |
 | — | 审计落 ES 或 ClickHouse | §4.2 |

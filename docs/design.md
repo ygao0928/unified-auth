@@ -169,7 +169,7 @@ type Identity struct {
 }
 ```
 
-- **三种上游都要做**：CAS、SAML 2.0、OIDC 都是必交付的适配器，挂在上面的接口上。不是按公司当前只用的那一种来裁剪产品范围。以后可以再加其他协议，但不能因此少做这三种。
+- **三种上游都要做**：CAS、SAML 2.0、OIDC 都是必交付的适配器，挂在上面的接口上。P1 先实现 OIDC 上游适配，CAS 和 SAML 2.0 在 P6 补齐。以后可以再加其他协议，但不能因此少做这三种。
 - **属性映射可配置**：每个身份源配置一份 `attribute_mapping`，例如 CAS 返回的 `employeeNumber` 映射到 `EmpNo`，SAML 的 `urn:oid:...` 映射到 `Email`。
 - **多身份源并存**：只配置了一个身份源时直接跳转；配置了多个时，在认证中心的登录页提供选择，或者由客户端通过 `idp_hint` 参数指定。
 - **用户落库**：首次登录时以工号为键自动创建用户，并赋予默认角色；之后每次登录刷新可选属性。属性为空时不覆盖已有值。
@@ -199,7 +199,7 @@ JOSE 头 `typ` 必须是 `at+jwt`（也接受 `application/at+jwt`，不区分�
 
 不认识的 claim 一律忽略。JWT 里不放权限点。出现了的可选字段必须是正确的类型，否则视为 token 无效。
 
-**Refresh Token**：使用不透明随机串，存储在 Redis 中；每次使用后轮换，检测到旧 token 被重复使用时，吊销整个会话链。m2m 不签发 refresh token。用户客户端的 refresh token 有效期为 `refresh_token_ttl`，全局默认 600 秒（10 分钟），与会话绝对时长无关；客户端可以单独覆盖。刷新还要同时满足空闲超时和会话绝对时长，先到期的那个生效。
+**Refresh Token**：使用不透明随机串，存储在 Redis 中；每次使用后轮换，检测到旧 token 被重复使用时，吊销整个会话链。m2m 不签发 refresh token。轮换发出的新 refresh token 从轮换当时起重新计算 `refresh_token_ttl`（滑动刷新）。全局默认 600 秒（10 分钟），与会话绝对时长无关；客户端可以单独覆盖。会话仍受空闲超时和会话绝对时长约束，刷新时这三项先到期的那个生效。超过 `refresh_token_ttl` 没有成功轮换就必须重新登录；在到期前持续轮换，会话可以延续到空闲超时或绝对时长。
 
 **ID Token**：按 OIDC 标准签发，只给前端或客户端用来展示用户信息，**不能**拿来访问 API。
 
@@ -216,7 +216,7 @@ JOSE 头 `typ` 必须是 `at+jwt`（也接受 `application/at+jwt`，不区分�
 
 空闲超时和会话绝对时长沿用上表，同样可以按客户端覆盖。m2m 没有会话，这两项和 refresh token 都不适用。
 
-全局默认下，用户客户端的 `refresh_token_ttl` 与 `access_token_ttl` 同为 600 秒，短于 `idle_timeout` 和 `absolute_session_ttl`。不覆盖时，refresh token 会先于空闲超时和会话绝对时长到期。轮换出来的新 refresh token，600 秒从轮换当时重计，还是整条链从首次签发起只给 600 秒，尚未规定，见 §14 D5。Redis 中 `auth:rt:{refresh_hash}` 的 TTL 取该客户端的 `refresh_token_ttl`。
+全局默认下，单次 refresh token 与用户 access token 同为 600 秒，短于 `idle_timeout` 和 `absolute_session_ttl`。因为是滑动刷新，客户端在 600 秒内成功轮换就能继续，直到空闲超时或绝对时长。Redis 中 `auth:rt:{refresh_hash}` 的 TTL 取该客户端的 `refresh_token_ttl`，从该 token 签发或轮换时起算。
 
 **密钥管理**：
 - 签名私钥存放在 KMS 或 K8s Secret 中，各机房共用同一套。
@@ -676,12 +676,12 @@ User {
 | 阶段 | 时长（估） | 交付内容 | 验收标准 |
 |---|---|---|---|
 | P0 契约 | 1 周 | 本文档评审定稿；claims、错误码、事件、权限 API 的 OpenAPI 定义；一致性测试用例 | 评审通过 |
-| P1 认证中心 MVP | 3 周 | 上游可插拔层（CAS / SAML 2.0 / OIDC 的 IdentityProvider），并实现其中一种适配使试点能登录；另外两种适配在 P6 补齐，三种都是交付范围。下游 OIDC 授权码模式和刷新；JWKS；全局会话（有效期、空闲超时，含 5.2 的全局默认与客户端覆盖）；基础审计；管理后台（应用注册） | 试点项目可以完成登录 |
+| P1 认证中心 MVP | 3 周 | 上游可插拔层（IdentityProvider），并实现 OIDC 上游适配使试点能登录；CAS 与 SAML 2.0 上游适配在 P6 补齐，三种都是交付范围。下游 OIDC 授权码模式和刷新；JWKS；全局会话（有效期、空闲超时，含 5.2 的全局默认与客户端覆盖）；基础审计；管理后台（应用注册） | 试点项目可以完成登录 |
 | P2 三端 SDK | 3 周（与 P1 后半段并行） | Go、Python、Java SDK 的验签、当前用户、独立模式登录功能；JS SDK；demo 工程；一致性测试接入 CI | 三端全部通过一致性测试 |
 | P3 试点 | 2 周 | 试点项目覆盖网关模式和独立模式各一个 | 生产灰度运行 |
 | P4 会话治理 | 2 周 | 多端策略、强制下线、吊销与权限变更事件（Redis Streams，发布方写入各机房；公网仍走 SSE）、单点登出 | 远程机房 Redis 可达时，下线操作 < 5 秒全局生效 |
 | P5 权限中心 | 3 周 | 应用、权限点、角色、全局角色、数据范围；`permissions.yaml` 同步；SDK 权限校验与缓存；授权下放 | 试点项目完成权限迁移 |
-| P6 多形态与兼容 | 3 周 | 补齐 P1 未交付的上游适配，使 CAS、SAML 2.0、OIDC 三种都可用；移动 App、小程序（token exchange 和绑定）、Open API（client_credentials 和 scope）；下游 SAML 和 CAS 兼容通道 | 三种上游适配都可用；各形态 demo 通过 |
+| P6 多形态与兼容 | 3 周 | 补齐上游 CAS 与 SAML 2.0 适配，使三种上游都可用；移动 App、小程序（token exchange 和绑定）、Open API（client_credentials 和 scope）；下游 SAML 和 CAS 兼容通道 | 三种上游适配都可用；各形态 demo 通过 |
 | P7 多机房与合规 | 2 周 | 跨机房部署、事件通道可切换到 Kafka（MirrorMaker 2）、密钥轮换、审计长期存储、管理后台二次认证 | 机房故障演练、等保自查 |
 | 持续 | — | 存量项目逐个迁移（迁移时用户重新登录）；SDK 版本治理 | — |
 
@@ -699,6 +699,6 @@ User {
 | R6 | Redis Stream 不跨机房复制。发布方写远程机房失败时，该机房收不到事件 | 强制下线可能超过 5 秒 | 发布方重试；未送达期间靠 access token 过期兜底。换 Kafka 后用 MirrorMaker 2 做复制 |
 | D1 | 事件通道选型 | — | 已决定：首期 Redis Streams，包在可替换的 EventBus 后面；Kafka 为预定替代。跨机房限制见 R6 |
 | D2 | 默认 token 有效期和会话策略数值 | — | 已决定：按注册客户端配置；未配置的项用 5.2 的全局默认。`refresh_token_ttl` 的全局默认是 600 秒，与会话绝对时长无关 |
-| D5 | 默认 refresh token 只有 600 秒，与用户 access token 相同，并短于空闲超时和会话绝对时长。轮换后是否重新计算这 600 秒尚未规定 | 不覆盖时，用户每隔约 10 分钟就要重新登录，或只能靠连续轮换撑到空闲/绝对时长。App、小程序把 refresh token 当作长期凭证存放时，默认值盖不住 §6.1 的 7 天 / 30 天 | 保持 600 秒这一全局默认。客户端可以单独配得更长。轮换是否重计见评审 |
+| D5 | refresh token 轮换后是否重新计算有效期 | — | 已决定：滑动刷新。每次轮换从当时起重新计算 `refresh_token_ttl`（默认 600 秒）。会话仍受空闲超时和绝对时长约束 |
 | D3 | 首批启用的下游兼容协议 | 排期 | 按第三方系统的实际需求排序 |
 | D4 | 小程序平台范围（微信 / 企业微信 / 钉钉） | 适配工作量 | 先做微信，其他平台按需增加 |
