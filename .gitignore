@@ -1,0 +1,4 @@
+auth-center/bin/
+auth-center/.dev-keys/
+**/__pycache__/
+*.pyc

@@ -1,0 +1,18 @@
+# 本地示例。生产密钥不要写进仓库。全局默认有效期不在这个文件里，见 internal/config/lifetimes.go。
+issuer: http://localhost:8080
+dc: local
+http:
+  addr: ":8080"
+postgres:
+  dsn: postgres://auth:auth@localhost:5432/auth?sslmode=disable
+redis:
+  addr: localhost:6379
+access_token_ttl_cap: 1800
+previous_key_buffer: 60
+clock_skew: 60
+log:
+  level: info
+keys:
+  - alg: RS256
+    pem_file: .dev-keys/active.pem
+    role: active

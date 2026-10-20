@@ -6,6 +6,7 @@
 
 - [设计文档 v0.1（待评审）](docs/design.md)
 - [开发任务分解](docs/tasks.md)：按 P0–P7 拆分的任务、依赖和关键路径
+- [认证中心骨架](auth-center/README.md)：P1 的 Go 服务（Chi、PostgreSQL、Redis）
 - [契约规范 spec/](spec/README.md)：OpenAPI、claims、错误码、事件、token 校验算法、权限规则
 - [一致性测试 conformance/](conformance/README.md)：三端 SDK 必须通过的测试向量
 

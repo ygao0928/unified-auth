@@ -1,0 +1,4 @@
+.git
+**/*.private.pem
+auth-center/bin
+auth-center/.dev-keys

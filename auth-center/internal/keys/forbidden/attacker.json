@@ -1,0 +1,12 @@
+{
+  "keys": [
+    {
+      "kty": "RSA",
+      "kid": "attacker",
+      "use": "sig",
+      "alg": "RS256",
+      "n": "r5-6OVtzOJie41IvRR2DmD7Q7kMutkCOaFv_xwSOg0zWsbePFrnJPWYfXbJ12E2XtjeTpHiuPMPVilrJJE4JfP10QDnbYe-YwIw1DM8w1Xph-1PhKqBE-GiX7-tUb-sf1yXiu4T8xfkVY1AU0e0BAlUgD_Rt60Uavit7edR5W6LrXqMQq8r0GR3WCCY2dtBI0axlUZn8-Sa0Q2PR4K88SsR4Vd_ptMvGwIKZOR0alRVO8w5ZgwSZVlgLzxkas5rA5UJzdbrpQDPwxcg5HlugBxdAGmXusPhzH9JIkIIoRJxbxM5X7IhPDk9vcrPdjzYH-_YwfTfglYwi3RVNlGYGrw",
+      "e": "AQAB"
+    }
+  ]
+}
