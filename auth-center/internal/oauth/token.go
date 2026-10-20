@@ -196,9 +196,15 @@ func (h *Handler) loadLiveSession(w http.ResponseWriter, r *http.Request, asid, 
 func (h *Handler) revokeFromApp(r *http.Request, asid, family string) {
 	as, err := h.sessions.GetApp(r.Context(), asid)
 	if err == nil {
+		sub := ""
+		if gs, gerr := h.sessions.GetGlobal(r.Context(), as.SID); gerr == nil {
+			sub = gs.Sub
+		}
 		if revErr := h.sessions.RevokeChain(r.Context(), as.SID, h.retention()); revErr != nil {
 			h.logger.Error("revoke session chain", "trace_id", httpserver.TraceID(r.Context()))
+			return
 		}
+		h.publishRevoked(r.Context(), sessionRevoked(as.SID, sub, "refresh_reused"))
 		return
 	}
 	if err := h.sessions.DeleteFamily(r.Context(), family); err != nil {

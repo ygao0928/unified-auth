@@ -19,6 +19,7 @@ import (
 
 	"github.com/ygao0928/unified-auth/auth-center/internal/apierr"
 	"github.com/ygao0928/unified-auth/auth-center/internal/config"
+	"github.com/ygao0928/unified-auth/auth-center/internal/eventbus"
 	"github.com/ygao0928/unified-auth/auth-center/internal/httpserver"
 	"github.com/ygao0928/unified-auth/auth-center/internal/idp"
 	"github.com/ygao0928/unified-auth/auth-center/internal/keys"
@@ -63,12 +64,14 @@ type Deps struct {
 	Store       *pgstore.Store
 	Sessions    *session.Store
 	IDPs        map[string]idp.IdentityProvider
+	Bus         eventbus.Bus
 	Now         func() time.Time
 	Logger      *slog.Logger
 }
 
-// Handler 实现授权码、上游回调、令牌和 discovery。
+// Handler 实现授权码、上游回调、令牌、登出、用户信息和 discovery。
 // 有效期解析使用 pgstore，调用方要把同一份 LifetimeDefaults 交给仓储。
+// Bus 为空时不发布事件。生产进程会接上 Redis Stream。
 type Handler struct {
 	Issuer      string
 	DC          string
@@ -80,9 +83,11 @@ type Handler struct {
 	store       *pgstore.Store
 	sessions    *session.Store
 	idps        map[string]idp.IdentityProvider
+	bus         eventbus.Bus
 	Now         func() time.Time
 	logger      *slog.Logger
 	secure      bool
+	httpClient  *http.Client
 }
 
 // New 检查签发令牌所必需的依赖。身份源可以为空，此时需要登录的授权请求会失败。
@@ -112,16 +117,26 @@ func New(d Deps) (*Handler, error) {
 	return &Handler{
 		Issuer: d.Issuer, DC: d.DC, Cap: d.Cap, ClockSkew: d.ClockSkew,
 		AuthCodeTTL: d.AuthCodeTTL, TxnTTL: d.TxnTTL,
-		keys: d.Keys, store: d.Store, sessions: d.Sessions, idps: idps,
+		keys: d.Keys, store: d.Store, sessions: d.Sessions, idps: idps, bus: d.Bus,
 		Now: d.Now, logger: d.Logger, secure: strings.HasPrefix(strings.ToLower(d.Issuer), "https://"),
+		httpClient: &http.Client{
+			Timeout: 5 * time.Second,
+			CheckRedirect: func(*http.Request, []*http.Request) error {
+				return http.ErrUseLastResponse
+			},
+		},
 	}, nil
 }
 
-// Mount 注册 discovery、授权、令牌和上游回调。
+// Mount 注册 discovery、授权、令牌、登出、用户信息、吊销、内省和上游回调。
 func (h *Handler) Mount(r chi.Router) {
 	r.Get("/.well-known/openid-configuration", h.discovery)
 	r.Get("/oauth2/authorize", h.authorize)
 	r.Post("/oauth2/token", h.token)
+	r.Get("/oauth2/logout", h.logout)
+	r.Get("/oauth2/userinfo", h.userinfo)
+	r.Post("/oauth2/revoke", h.revoke)
+	r.Post("/oauth2/introspect", h.introspect)
 	r.Get("/idp/{id}/callback", h.callback)
 }
 

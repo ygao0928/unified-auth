@@ -436,8 +436,8 @@ func TestOIDCAuthorizeTokenAndRefresh(t *testing.T) {
 	if disc["issuer"] != issuer || disc["jwks_uri"] != issuer+"/oauth2/jwks" {
 		t.Fatalf("discovery %#v", disc)
 	}
-	if _, ok := disc["userinfo_endpoint"]; ok {
-		t.Fatal("userinfo advertised")
+	if disc["userinfo_endpoint"] != issuer+"/oauth2/userinfo" || disc["revocation_endpoint"] != issuer+"/oauth2/revoke" || disc["introspection_endpoint"] != issuer+"/oauth2/introspect" || disc["end_session_endpoint"] != issuer+"/oauth2/logout" || disc["backchannel_logout_supported"] != true {
+		t.Fatalf("discovery endpoints %#v", disc)
 	}
 	methods, _ := disc["code_challenge_methods_supported"].([]any)
 	if len(methods) != 1 || methods[0] != "S256" {

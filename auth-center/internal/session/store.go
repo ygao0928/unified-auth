@@ -489,6 +489,29 @@ func (s *Store) RevokeChain(ctx context.Context, sid string, retention time.Dura
 	return s.RememberRevokedSID(ctx, sid, retention)
 }
 
+// RevokeApp 结束一个应用会话和它的 refresh 家族，并从全局会话的应用集合里摘掉。
+// 不吊销全局会话，也不发布事件。应用会话不存在时返回 ErrNotFound。
+func (s *Store) RevokeApp(ctx context.Context, asid string) (AppSession, error) {
+	as, err := s.GetApp(ctx, asid)
+	if err != nil {
+		return AppSession{}, err
+	}
+	sub := ""
+	gs, err := s.GetGlobal(ctx, as.SID)
+	if err == nil {
+		sub = gs.Sub
+	} else if !errors.Is(err, ErrNotFound) {
+		return AppSession{}, err
+	}
+	if err := s.deleteApp(ctx, sub, asid); err != nil {
+		return AppSession{}, err
+	}
+	if err := s.rdb.SRem(ctx, GlobalAppsKey(as.SID), asid).Err(); err != nil {
+		return AppSession{}, err
+	}
+	return as, nil
+}
+
 // DeleteFamily 删掉一个刷新家族里的全部 refresh 键。应用会话已经不在时用它收尾。
 func (s *Store) DeleteFamily(ctx context.Context, family string) error {
 	if family == "" {

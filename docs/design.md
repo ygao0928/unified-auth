@@ -314,6 +314,16 @@ SDK 在本地维护一个吊销集合。每条记录保留到 `event.ts + access
 
 公开客户端是没有 `client_secret` 的 `web`、`app`、`miniapp`（SPA、App、小程序）。授权码已经使用 PKCE S256 时，它们调用 `/oauth2/token` 的 `authorization_code` 和 `refresh_token` 可以不带客户端认证，但必须带 `client_id`。`ssr`、`m2m`，以及任何配置了密钥的客户端，都是机密客户端，换票和刷新都必须认证。公开客户端的 refresh token 仍然每次轮换，重放旧 token 仍然吊销整条会话链。带了密钥就必须和登记的哈希一致，公开客户端也不例外。
 
+`GET /oauth2/logout` 按 RP-Initiated Logout 结束全局会话。会话取验过签的 `id_token_hint`（允许过期）里的 `sid`，没有 hint 时用 `auth_sid` cookie。结束前向每个登记了 `backchannel_logout_uri` 的应用 POST `logout_token`（`typ=logout+jwt`，带 `sid`）。没登记就跳过这次 HTTP，会话和事件照常处理。`backchannel_logout_uri` 是客户端上的可空列，不在 §8.2 的 ER 图里。然后发布 `auth.revoked`，`type=session`，`reason=logout`。`post_logout_redirect_uri` 必须与该客户端 `redirect_uris` 里的某一项精确匹配，设计里没有单独的登出回调列表。上游登出只在适配器声明支持时跳转，优先于 `post_logout_redirect_uri`；当前 OIDC 适配器仍返回不支持（R1）。没有可跳转地址时返回 204。
+
+`GET /oauth2/userinfo` 要求 Bearer `at+jwt`。`sub` 必填；`name`、`email`、`dept_id`、`dept_name` 有值才返回。
+
+`POST /oauth2/revoke` 按 RFC 7009。未知 token 也返回 200。它结束对应的应用会话（包括这张会话上的 refresh token），不结束整个全局会话。机密客户端必须认证。公开客户端带 `client_id`，只能吊销发给自己的 token。成功结束应用会话时发布 `auth.revoked`，`type=app_session`，`reason=logout`。
+
+`POST /oauth2/introspect` 按 RFC 7662，只接受机密客户端认证。`active=true` 时附带 access token 的 claims；调用方只能看到 `aud` 或 `azp` 属于自己的 token，否则 `active=false`。设计里的「仅内网」不在进程内做网络限制。
+
+refresh token 被重放时，整条会话链吊销之后再发布 `auth.revoked`，`type=session`，`reason=refresh_reused`。
+
 ---
 
 ## 6. 客户端接入方案
