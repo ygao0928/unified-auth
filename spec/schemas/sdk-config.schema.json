@@ -25,9 +25,9 @@
     "revocation": {
       "type": "object",
       "properties": {
-        "channel": { "type": "string", "enum": ["auto", "mq", "sse", "none"], "default": "auto" },
-        "mq": { "type": "object", "description": "MQ 连接参数，依具体 MQ 实现定义" },
-        "retention": { "type": "integer", "default": 1860, "description": "本地吊销记录保留秒数 = access token 最长有效期 + clock_skew" }
+        "channel": { "type": "string", "enum": ["auto", "mq", "sse", "none"], "default": "auto", "description": "auto：内网走 mq 事件通道，公网或独立部署走 sse。mq 是可替换的 EventBus，首期为 Redis Streams" },
+        "mq": { "type": "object", "description": "事件通道连接参数。首期为 Redis Streams；换成 Kafka 时仍用这一项，事件格式不变" },
+        "retention": { "type": "integer", "default": 1860, "description": "本地吊销记录保留秒数，必须 >= access_token_ttl_cap + clock_skew。cap 默认 1800，clock_skew 默认 60，因此默认 1860。调高 cap 或 clock_skew 时必须同时调高本项" }
       },
       "additionalProperties": false
     },
