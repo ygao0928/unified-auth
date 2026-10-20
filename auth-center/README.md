@@ -11,6 +11,9 @@
 - **P1-AC-04** 授权码只接受 PKCE S256。`POST /oauth2/token` 签发 `at+jwt`（RS256 / ES256）和不透明 refresh token。无密钥的 web / app / miniapp 在授权码和刷新时可以不带 `client_secret`。ssr、m2m 以及配了密钥的客户端必须认证。刷新滑动轮换；重放旧 refresh token 吊销整条会话链并返回 `AUTH_REFRESH_REUSED`。公开客户端同样轮换并检测重放。
 - **P1-AC-05** `/.well-known/openid-configuration` 与 `GET /oauth2/jwks`（`Cache-Control: max-age=600`）。启动时拒绝 `conformance/keys` 里的测试密钥。access token 使用客户端覆盖，否则用配置里的全局默认，并截断到 `access_token_ttl_cap`。
 - **P1-AC-06** 刷新时同时检查空闲超时、绝对时长和当前 refresh token 的 TTL，先到期者返回 `AUTH_LOGIN_REQUIRED`。
+- **P1-AC-07** 上游登录成功和失败按 `audit-event.schema.json` 追加进 PostgreSQL `audit_events`。不记录 token、密码、邮箱或姓名。写审计失败不拒绝登录。ES 或 ClickHouse 仍不代选。
+- **P1-ADM-01** `POST/GET/PATCH /api/v1/apps` 与 `POST /api/v1/apps/{client_id}/secret`。密钥 bcrypt 入库，只在注册和轮换时返回一次。未填的有效期等于 §5.2 全局默认。管理页面未做，Vue3 或 React 仍不代选。
+- **P1-DOC-01** 试点登录说明在 [`docs/pilot-login.md`](../docs/pilot-login.md)。
 - **P4-BUS-01** `EventBus` 接口和本机房 Redis Stream 的 XADD / XRANGE。没有保留期裁剪，也没有写到其他机房。
 
 另外已挂上设计 §5.4 的四个端点，它们还不是某条 P1 任务的全部验收：
@@ -22,7 +25,7 @@
 
 refresh token 重放在吊销整条链之后再发布 `auth.revoked`（`type=session`，`reason=refresh_reused`）。P4-AC-04 的上游登出、SAML / CAS 以及管理端踢下线还没做。
 
-未完成：P1-AC-07、P1-ADM-01、P1-DOC-01。`client_credentials`、token exchange、CAS / SAML 不在本服务里。内省的「仅内网」没有在进程里做网络限制。
+试点可以通过文档里的 API 注册客户端并完成 OIDC 登录。管理后台页面还没有，因为前端框架未选。`client_credentials`、token exchange、CAS / SAML 不在本服务里。内省的「仅内网」没有在进程里做网络限制。
 
 ## 本地
 
@@ -43,7 +46,7 @@ make keygen
 
 依赖本机或 `make up` 里的 PostgreSQL 和 Redis。`make up` 需要 Docker。开发密钥写到 `.dev-keys/active.pem`，不要拿到生产环境用。
 
-环境变量覆盖同名配置，例如 `AUTH_CENTER_ISSUER`、`AUTH_CENTER_POSTGRES_DSN`、`AUTH_CENTER_KEY_ACTIVE_PEM_FILE`、`AUTH_CENTER_USER_ACCESS_TOKEN_TTL`。设置了 active PEM 环境变量时，不再使用文件里的 `keys`。设置了 `AUTH_CENTER_IDP_ID` 时，不再使用文件里的 `idps`。
+环境变量覆盖同名配置，例如 `AUTH_CENTER_ISSUER`、`AUTH_CENTER_POSTGRES_DSN`、`AUTH_CENTER_KEY_ACTIVE_PEM_FILE`、`AUTH_CENTER_USER_ACCESS_TOKEN_TTL`、`AUTH_CENTER_ADMIN_TOKEN`。设置了 active PEM 环境变量时，不再使用文件里的 `keys`。设置了 `AUTH_CENTER_IDP_ID` 时，不再使用文件里的 `idps`。引导令牌不要写进 YAML，启动日志也不打印它。为空时 `/api/v1/apps` 返回 401。
 
 签名私钥只从 PEM 文件读取。`keys[].pem_file` 或 `AUTH_CENTER_KEY_ACTIVE_PEM_FILE` 指向文件；下一把用 `AUTH_CENTER_KEY_NEXT_PEM_FILE`，可选 `AUTH_CENTER_KEY_ACTIVE_KID`、`AUTH_CENTER_KEY_ACTIVE_ALG`、`AUTH_CENTER_KEY_NEXT_KID`、`AUTH_CENTER_KEY_NEXT_ALG`。Kubernetes 把 Secret 挂到这个路径。KMS 延后到 P7，当前不接。
 

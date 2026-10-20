@@ -63,6 +63,11 @@ func (s *Store) Resolve(c Client) (config.Lifetimes, error) {
 	return config.ResolveLifetimes(c.ClientType, c.SessionPolicy, s.cap, s.defaults)
 }
 
+// CheckClient 用这份仓储的 cap 和全局默认检查注册字段，不写库。
+func (s *Store) CheckClient(c Client) error {
+	return ValidateClient(c, s.cap, s.defaults)
+}
+
 // HashClientSecret 用 bcrypt 保存客户端密钥。cost 为 0 时用 bcrypt 的默认成本。
 func HashClientSecret(secret string, cost int) (string, error) {
 	if secret == "" {
@@ -163,20 +168,27 @@ func (s *Store) CreateClient(ctx context.Context, c Client) error {
 }
 
 func (s *Store) GetClient(ctx context.Context, clientID string) (Client, error) {
+	c, err := scanClient(s.pool.QueryRow(ctx, `
+		SELECT client_id, name, client_type, secret_hash, redirect_uris, session_policy, enabled, backchannel_logout_uri
+		FROM clients WHERE client_id = $1`, clientID))
+	if errors.Is(err, pgx.ErrNoRows) {
+		return Client{}, ErrNotFound
+	}
+	return c, err
+}
+
+type rowScanner interface {
+	Scan(dest ...any) error
+}
+
+func scanClient(row rowScanner) (Client, error) {
 	var (
 		c      Client
 		secret *string
 		policy []byte
 		back   *string
 	)
-	err := s.pool.QueryRow(ctx, `
-		SELECT client_id, name, client_type, secret_hash, redirect_uris, session_policy, enabled, backchannel_logout_uri
-		FROM clients WHERE client_id = $1`, clientID).Scan(
-		&c.ClientID, &c.Name, &c.ClientType, &secret, &c.RedirectURIs, &policy, &c.Enabled, &back)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return Client{}, ErrNotFound
-	}
-	if err != nil {
+	if err := row.Scan(&c.ClientID, &c.Name, &c.ClientType, &secret, &c.RedirectURIs, &policy, &c.Enabled, &back); err != nil {
 		return Client{}, err
 	}
 	if secret != nil {
@@ -229,6 +241,76 @@ func (s *Store) UpsertUserFromLogin(ctx context.Context, u User) error {
 		ON CONFLICT (emp_no, role_id) DO NOTHING`,
 		u.EmpNo, u.Name, u.Email, u.Mobile, u.DeptID, u.DeptName, DefaultRoleViewer)
 	return err
+}
+
+func (s *Store) UpdateClient(ctx context.Context, c Client) error {
+	if err := ValidateClient(c, s.cap, s.defaults); err != nil {
+		return err
+	}
+	if c.RedirectURIs == nil {
+		c.RedirectURIs = []string{}
+	}
+	policy, err := json.Marshal(c.SessionPolicy)
+	if err != nil {
+		return err
+	}
+	var back any
+	if c.BackchannelLogoutURI != "" {
+		back = c.BackchannelLogoutURI
+	}
+	tag, err := s.pool.Exec(ctx, `
+		UPDATE clients SET
+			name = $2,
+			client_type = $3,
+			redirect_uris = $4,
+			session_policy = $5,
+			enabled = $6,
+			backchannel_logout_uri = $7,
+			updated_at = now()
+		WHERE client_id = $1`,
+		c.ClientID, c.Name, c.ClientType, c.RedirectURIs, policy, c.Enabled, back)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
+func (s *Store) SetClientSecret(ctx context.Context, clientID, secretHash string) error {
+	if clientID == "" || secretHash == "" {
+		return errors.New("client_id and secret hash are required")
+	}
+	tag, err := s.pool.Exec(ctx, `
+		UPDATE clients SET secret_hash = $2, updated_at = now() WHERE client_id = $1`,
+		clientID, secretHash)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
+func (s *Store) ListClients(ctx context.Context) ([]Client, error) {
+	rows, err := s.pool.Query(ctx, `
+		SELECT client_id, name, client_type, secret_hash, redirect_uris, session_policy, enabled, backchannel_logout_uri
+		FROM clients ORDER BY client_id`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []Client
+	for rows.Next() {
+		c, err := scanClient(rows)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, c)
+	}
+	return out, rows.Err()
 }
 
 func (s *Store) GetUser(ctx context.Context, empNo string) (User, error) {

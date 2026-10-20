@@ -314,7 +314,7 @@ SDK 在本地维护一个吊销集合。每条记录保留到 `event.ts + access
 
 公开客户端是没有 `client_secret` 的 `web`、`app`、`miniapp`（SPA、App、小程序）。授权码已经使用 PKCE S256 时，它们调用 `/oauth2/token` 的 `authorization_code` 和 `refresh_token` 可以不带客户端认证，但必须带 `client_id`。`ssr`、`m2m`，以及任何配置了密钥的客户端，都是机密客户端，换票和刷新都必须认证。公开客户端的 refresh token 仍然每次轮换，重放旧 token 仍然吊销整条会话链。带了密钥就必须和登记的哈希一致，公开客户端也不例外。
 
-`GET /oauth2/logout` 按 RP-Initiated Logout 结束全局会话。会话取验过签的 `id_token_hint`（允许过期）里的 `sid`，没有 hint 时用 `auth_sid` cookie。结束前向每个登记了 `backchannel_logout_uri` 的应用 POST `logout_token`（`typ=logout+jwt`，带 `sid`）。没登记就跳过这次 HTTP，会话和事件照常处理。`backchannel_logout_uri` 是客户端上的可空列，不在 §8.2 的 ER 图里。然后发布 `auth.revoked`，`type=session`，`reason=logout`。`post_logout_redirect_uri` 必须与该客户端 `redirect_uris` 里的某一项精确匹配，设计里没有单独的登出回调列表。上游登出只在适配器声明支持时跳转，优先于 `post_logout_redirect_uri`；当前 OIDC 适配器仍返回不支持（R1）。没有可跳转地址时返回 204。
+`GET /oauth2/logout` 按 RP-Initiated Logout 结束全局会话。会话取验过签的 `id_token_hint`（允许过期）里的 `sid`，没有 hint 时用 `auth_sid` cookie。结束前向每个登记了 `backchannel_logout_uri` 的应用 POST `logout_token`（`typ=logout+jwt`，带 `sid`）。没登记就跳过这次 HTTP，会话和事件照常处理。`backchannel_logout_uri` 是客户端上的可空列，写在 §8.2 的 APP 上。然后发布 `auth.revoked`，`type=session`，`reason=logout`。`post_logout_redirect_uri` 必须与该客户端 `redirect_uris` 里的某一项精确匹配，设计里没有单独的登出回调列表。上游登出只在适配器声明支持时跳转，优先于 `post_logout_redirect_uri`；当前 OIDC 适配器仍返回不支持（R1）。没有可跳转地址时返回 204。
 
 `GET /oauth2/userinfo` 要求 Bearer `at+jwt`。`sub` 必填；`name`、`email`、`dept_id`、`dept_name` 有值才返回。
 
@@ -470,7 +470,7 @@ erDiagram
     ROLE ||--o{ USER_ROLE : ""
     APP ||--o{ APP_ADMIN : "授权下放"
 
-    APP { string client_id PK  string name  string client_type  json session_policy "有效期覆盖，见 5.2" }
+    APP { string client_id PK  string name  string client_type  json session_policy "有效期覆盖，见 5.2"  string backchannel_logout_uri "可空，OIDC back-channel logout" }
     PERMISSION { string code PK "meeting:user:list"  string app_id  string name  bool deprecated }
     ROLE { string id PK  string scope "global | app:<id>"  string name  string data_scope "self|dept|dept_and_sub|all|null" }
     USER { string emp_no PK  string name  string dept_id  int perm_ver }
@@ -546,6 +546,8 @@ permissions:
 
 `actor` 是对象。`type` 取 `user` / `client` / `system` / `anonymous`，`id` 必填（工号、`client_id`、系统组件名，或匿名尝试登录时的标识）。事件 `id`、`ts`、`event`、`actor`、`result`、`trace_id`、`dc` 必填。可选字段还有 `asid` 和 `changes`（变更类事件的前后差异，写入前脱敏）。
 
+P1 把通过 schema 检查的事件追加进 PostgreSQL 表 `audit_events`。登录不因为写审计失败而失败。长期保存、查询审计再记一条，以及 ES 或 ClickHouse，仍见 P7-AUD-01，这里不代选。
+
 ### 9.3 合规要求
 
 - 审计数据只追加、不可修改；写入时间和服务器时钟同步到统一的 NTP 源。
@@ -593,7 +595,7 @@ permissions:
 
 ### 10.3 应用接入流程
 
-1. 在管理后台注册应用，获得 `client_id` 和 `client_secret`，并配置回调地址、客户端类型、会话策略。
+1. 注册应用，获得 `client_id` 和 `client_secret`，并配置回调地址、客户端类型、会话策略。P1 的注册入口是 `POST /api/v1/apps`（见 `docs/pilot-login.md`）。管理后台页面仍待选定 Vue3 或 React，不在这一步里代选。
 2. 引入对应语言的 SDK，填写配置。
 3. 在仓库中提交 `permissions.yaml`，并接入 CI 同步。
 4. 运行 SDK 自带的一致性自检命令，例如 `unified-auth doctor`，检查连通性、JWKS 可用性和时钟偏差。

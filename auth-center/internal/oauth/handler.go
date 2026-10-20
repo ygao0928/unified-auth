@@ -262,6 +262,11 @@ func (h *Handler) callback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if upstreamErr := r.URL.Query().Get("error"); upstreamErr != "" {
+		h.auditLogin(r, loginAudit{
+			Event: "auth.login.failure", Result: "failure",
+			ActorType: "anonymous", ActorID: txn.ClientID, ClientID: txn.ClientID,
+			IDP: idpID, Reason: apierr.CodeUpstreamFailed,
+		})
 		oauthErr := "server_error"
 		if upstreamErr == "access_denied" || upstreamErr == "login_required" {
 			oauthErr = upstreamErr
@@ -280,6 +285,11 @@ func (h *Handler) callback(w http.ResponseWriter, r *http.Request) {
 	ident, err := provider.HandleCallback(r.Context(), r)
 	if err != nil || ident == nil || ident.EmpNo == "" {
 		h.logger.Error("upstream callback failed", "idp", idpID, "trace_id", httpserver.TraceID(r.Context()))
+		h.auditLogin(r, loginAudit{
+			Event: "auth.login.failure", Result: "failure",
+			ActorType: "anonymous", ActorID: client.ClientID, Client: &client,
+			IDP: idpID, Reason: apierr.CodeUpstreamFailed,
+		})
 		h.redirectErr(w, r, txn.RedirectURI, txn.State, "server_error", "upstream identity provider failed")
 		return
 	}
@@ -288,11 +298,25 @@ func (h *Handler) callback(w http.ResponseWriter, r *http.Request) {
 		DeptID: ident.DeptID, DeptName: ident.DeptName,
 	}); err != nil {
 		h.logger.Error("upsert user", "trace_id", httpserver.TraceID(r.Context()))
+		h.auditLogin(r, loginAudit{
+			Event: "auth.login.failure", Result: "failure",
+			ActorType: "user", ActorID: ident.EmpNo, Client: &client,
+			IDP: idpID, Reason: apierr.CodeDependencyUnavailable,
+		})
 		h.redirectErr(w, r, txn.RedirectURI, txn.State, "server_error", "user could not be stored")
 		return
 	}
 	user, err := h.store.GetUser(r.Context(), ident.EmpNo)
 	if err != nil || user.Disabled {
+		reason := "user_disabled"
+		if err != nil {
+			reason = apierr.CodeDependencyUnavailable
+		}
+		h.auditLogin(r, loginAudit{
+			Event: "auth.login.failure", Result: "failure",
+			ActorType: "user", ActorID: ident.EmpNo, Client: &client,
+			IDP: idpID, Reason: reason,
+		})
 		h.redirectErr(w, r, txn.RedirectURI, txn.State, "access_denied", "user cannot sign in")
 		return
 	}
@@ -315,6 +339,11 @@ func (h *Handler) callback(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := h.sessions.PutGlobal(r.Context(), gs); err != nil {
 		h.logger.Error("save global session", "trace_id", httpserver.TraceID(r.Context()))
+		h.auditLogin(r, loginAudit{
+			Event: "auth.login.failure", Result: "failure",
+			ActorType: "user", ActorID: ident.EmpNo, Client: &client,
+			IDP: provider.ID(), Reason: apierr.CodeDependencyUnavailable,
+		})
 		h.redirectErr(w, r, txn.RedirectURI, txn.State, "server_error", "session could not be created")
 		return
 	}
@@ -323,9 +352,19 @@ func (h *Handler) callback(w http.ResponseWriter, r *http.Request) {
 		login.AuthTime = authTime
 	}
 	if err := h.sessions.PutLoginMeta(r.Context(), sid, login); err != nil {
+		h.auditLogin(r, loginAudit{
+			Event: "auth.login.failure", Result: "failure",
+			ActorType: "user", ActorID: ident.EmpNo, Client: &client,
+			IDP: provider.ID(), SID: sid, Reason: apierr.CodeDependencyUnavailable,
+		})
 		h.redirectErr(w, r, txn.RedirectURI, txn.State, "server_error", "session could not be created")
 		return
 	}
+	h.auditLogin(r, loginAudit{
+		Event: "auth.login.success", Result: "success",
+		ActorType: "user", ActorID: ident.EmpNo, Client: &client,
+		IDP: provider.ID(), SID: sid,
+	})
 	meta := session.AuthMeta{AuthTime: login.AuthTime, AMR: login.AMR, Scope: txn.Scope}
 	h.finishCode(w, r, client, gs, txn.RedirectURI, txn.State, txn.Nonce, txn.CodeChallenge, meta)
 }
@@ -481,10 +520,14 @@ func (h *Handler) redirectCode(w http.ResponseWriter, r *http.Request, redirectU
 }
 
 func (h *Handler) nowUnix() int64 {
+	return h.nowTime().Unix()
+}
+
+func (h *Handler) nowTime() time.Time {
 	if h.Now != nil {
-		return h.Now().UTC().Unix()
+		return h.Now().UTC()
 	}
-	return time.Now().UTC().Unix()
+	return time.Now().UTC()
 }
 
 func (h *Handler) retention() time.Duration {

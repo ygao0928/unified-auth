@@ -30,9 +30,9 @@ P0 的契约文件在仓库里已有草案。下面仍把它们列为 P0 任务�
 | P1-AC-04 | 授权码、PKCE 与刷新 | `authorize`（只接受 S256）、`token` 的 authorization_code 与 refresh_token。无密钥的 web / app / miniapp 在 PKCE S256 下可以不带客户端认证换票和刷新；ssr、m2m 以及配置了密钥的客户端必须认证。refresh 每次轮换，新 token 从轮换当时起重新计算 `refresh_token_ttl`。重放旧 token 吊销整条会话链并返回 `AUTH_REFRESH_REUSED`。公开客户端同样轮换并检测重放 | P1-AC-01、P1-INF-01 | 5 | 试点浏览器能走完授权码。连续刷新时，每次得到的 refresh token 都重新计算有效期 |
 | P1-AC-05 | Access Token 与 JWKS | `typ=at+jwt`，算法只允许 RS256 / ES256。有效期按 §5.2：客户端覆盖，否则用全局默认；用户 access token 默认 600 秒，且不超过 `access_token_ttl_cap`（默认 1800）。启动时拒绝与 `conformance/keys/` 相同的签名密钥 | P1-AC-04 | 3 | `/.well-known/openid-configuration` 与 `/oauth2/jwks` 可用。JWKS `Cache-Control: max-age=600` |
 | P1-AC-06 | 全局会话的空闲与绝对时长 | 刷新时检查 `idle_timeout`、`absolute_session_ttl`，以及当前这张 refresh token 是否仍在 `refresh_token_ttl` 内（全局默认 600 秒，从签发或上次轮换起算）。先到期者拒绝刷新，返回 `AUTH_LOGIN_REQUIRED` | P1-INF-01、P1-AC-04 | 3 | 超过 600 秒没有轮换则不能再刷新。在 600 秒内持续轮换时，会话继续，直到空闲超时或绝对时长 |
-| P1-AC-07 | 基础审计 | 登录成功、登录失败按 `audit-event.schema.json` 记录。`actor` 为对象。不记录 token、密码、ticket 原文。长期保存见 P7-AUD-01；ES 或 ClickHouse 不代选 | P1-AC-03 | 2 | 一次成功登录和一次失败登录能查出符合 schema 的事件 |
-| P1-ADM-01 | 应用注册 | 管理后台注册应用，得到 `client_id` 与 `client_secret`，可配置回调地址、`client_type`、`session_policy`（`ClientLifetimes`）。前端 Vue3 或 React 不代选。OpenAPI 目前没有注册路径，实现时只使用设计已经写明的字段 | P1-AC-01、P1-INF-01 | 4 | 注册出的客户端能完成 P1 登录。未填的有效期等于 §5.2 全局默认 |
-| P1-DOC-01 | 试点登录说明 | 写明 OIDC 上游怎么配、回调地址、滑动刷新和全局默认有效期 | P1-AC-02、P1-ADM-01 | 1 | 试点按文档能配通 |
+| P1-AC-07 | 基础审计 | 登录成功、登录失败按 `audit-event.schema.json` 记录。`actor` 为对象。不记录 token、密码、ticket 原文。P1 追加写入 PostgreSQL `audit_events`。长期保存见 P7-AUD-01；ES 或 ClickHouse 不代选 | P1-AC-03 | 2 | 一次成功登录和一次失败登录能查出符合 schema 的事件 |
+| P1-ADM-01 | 应用注册 | 管理 API `POST/GET/PATCH /api/v1/apps` 与 `POST /api/v1/apps/{client_id}/secret` 注册应用，得到 `client_id` 与只展示一次的 `client_secret`（bcrypt），可配置回调地址、`backchannel_logout_uri`、`client_type`、`session_policy`（`ClientLifetimes`）。前端 Vue3 或 React 不代选，页面未做 | P1-AC-01、P1-INF-01 | 4 | 注册出的客户端能完成 P1 登录。未填的有效期等于 §5.2 全局默认 |
+| P1-DOC-01 | 试点登录说明 | 写明 OIDC 上游怎么配、回调地址、滑动刷新和全局默认有效期。见 [`pilot-login.md`](pilot-login.md) | P1-AC-02、P1-ADM-01 | 1 | 试点按文档能配通 |
 
 关键路径约 15 人日：P1-AC-01 → P1-AC-02 → P1-AC-04 → P1-AC-05。P1-INF-01、P1-ADM-01、P1-AC-07 并行。
 
