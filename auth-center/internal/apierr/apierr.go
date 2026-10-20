@@ -18,6 +18,14 @@ const (
 	CodeRefreshReused = "AUTH_REFRESH_REUSED"
 	// CodeUpstreamFailed 对应 spec/error-codes.yaml。
 	CodeUpstreamFailed = "AUTH_UPSTREAM_FAILED"
+	// CodeTokenMissing 对应 spec/error-codes.yaml。
+	CodeTokenMissing = "AUTH_TOKEN_MISSING"
+	// CodeTokenInvalid 对应 spec/error-codes.yaml。
+	CodeTokenInvalid = "AUTH_TOKEN_INVALID"
+	// CodeTokenExpired 对应 spec/error-codes.yaml。
+	CodeTokenExpired = "AUTH_TOKEN_EXPIRED"
+	// CodeSessionRevoked 对应 spec/error-codes.yaml。
+	CodeSessionRevoked = "AUTH_SESSION_REVOKED"
 )
 
 type body struct {

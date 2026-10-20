@@ -193,3 +193,50 @@ func TestRefreshConsumeKeepsTTLAndRevokeChain(t *testing.T) {
 		t.Fatal(revoked, err)
 	}
 }
+
+func TestRevokeAppLeavesGlobalSession(t *testing.T) {
+	ctx := context.Background()
+	store, _ := newStore(t)
+	gs := GlobalSession{SID: "bj1.keep", Sub: "E1", IDP: "corp", CreatedAt: 1, LastActive: 1, AbsExp: 100}
+	if err := store.PutGlobal(ctx, gs); err != nil {
+		t.Fatal(err)
+	}
+	keep := AppSession{ASID: "as.keep", SID: gs.SID, ClientID: "web", ClientType: "web", CreatedAt: 1, LastActive: 1}
+	drop := AppSession{ASID: "as.drop", SID: gs.SID, ClientID: "app", ClientType: "app", CreatedAt: 1, LastActive: 1}
+	if err := store.PutApp(ctx, keep); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.PutApp(ctx, drop); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.PutUserSession(ctx, gs.Sub, drop.ASID, 1); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.PutRefresh(ctx, Refresh{Hash: "rh", ASID: drop.ASID, FamilyID: "rf.1"}, time.Minute); err != nil {
+		t.Fatal(err)
+	}
+	got, err := store.RevokeApp(ctx, drop.ASID)
+	if err != nil || got.ASID != drop.ASID {
+		t.Fatal(err, got.ASID)
+	}
+	if _, err := store.GetGlobal(ctx, gs.SID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := store.GetApp(ctx, keep.ASID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := store.GetApp(ctx, drop.ASID); err != ErrNotFound {
+		t.Fatal(err)
+	}
+	ids, err := store.ListAppIDs(ctx, gs.SID)
+	if err != nil || len(ids) != 1 || ids[0] != keep.ASID {
+		t.Fatalf("%v %v", ids, err)
+	}
+	if _, err := store.GetRefresh(ctx, "rh"); err != ErrNotFound {
+		t.Fatal(err)
+	}
+	revoked, err := store.IsSIDRevoked(ctx, gs.SID)
+	if err != nil || revoked {
+		t.Fatal(revoked, err)
+	}
+}

@@ -171,6 +171,14 @@ func TestSignSetsTypAndKid(t *testing.T) {
 		if mgr.ActiveAlgorithm() != tc.alg {
 			t.Fatal(mgr.ActiveAlgorithm())
 		}
+		hdr, claims, err := mgr.Verify(raw)
+		typ, _ := hdr.ExtraHeaders[jose.HeaderKey("typ")].(string)
+		if err != nil || typ != "at+jwt" || claims["iss"] != "https://auth.example.com" {
+			t.Fatalf("verify %s %v %#v %v", tc.alg, typ, claims, err)
+		}
+		if _, _, err := mgr.Verify(raw + "x"); err == nil {
+			t.Fatal("tampered token")
+		}
 	}
 	if _, err := (&Manager{}).Sign(map[string]any{}, ""); err == nil {
 		t.Fatal("empty typ")

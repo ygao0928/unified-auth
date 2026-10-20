@@ -25,13 +25,14 @@ var (
 // Client 是注册客户端。SessionPolicy 只存覆盖项，不把全局默认写回去。
 // SecretHash 是 bcrypt 哈希。明文 secret 不入库。
 type Client struct {
-	ClientID      string
-	Name          string
-	ClientType    string
-	SecretHash    string
-	RedirectURIs  []string
-	SessionPolicy config.SessionPolicy
-	Enabled       bool
+	ClientID             string
+	Name                 string
+	ClientType           string
+	SecretHash           string
+	RedirectURIs         []string
+	SessionPolicy        config.SessionPolicy
+	Enabled              bool
+	BackchannelLogoutURI string
 }
 
 // User 是按工号落库的用户。PermVer 与 Disabled 不由登录更新改写。
@@ -119,6 +120,12 @@ func ValidateClient(c Client, accessTokenTTLCap int, defaults config.LifetimeDef
 	if _, err := config.ResolveLifetimes(c.ClientType, c.SessionPolicy, accessTokenTTLCap, defaults); err != nil {
 		return err
 	}
+	if c.BackchannelLogoutURI != "" {
+		u, err := url.Parse(c.BackchannelLogoutURI)
+		if err != nil || (u.Scheme != "https" && u.Scheme != "http") || u.Host == "" {
+			return errors.New("backchannel_logout_uri must be an absolute http(s) url")
+		}
+	}
 	return nil
 }
 
@@ -137,10 +144,14 @@ func (s *Store) CreateClient(ctx context.Context, c Client) error {
 	if c.SecretHash != "" {
 		secret = c.SecretHash
 	}
+	var backchannel any
+	if c.BackchannelLogoutURI != "" {
+		backchannel = c.BackchannelLogoutURI
+	}
 	_, err = s.pool.Exec(ctx, `
-		INSERT INTO clients (client_id, name, client_type, secret_hash, redirect_uris, session_policy, enabled)
-		VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-		c.ClientID, c.Name, c.ClientType, secret, c.RedirectURIs, policy, c.Enabled)
+		INSERT INTO clients (client_id, name, client_type, secret_hash, redirect_uris, session_policy, enabled, backchannel_logout_uri)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+		c.ClientID, c.Name, c.ClientType, secret, c.RedirectURIs, policy, c.Enabled, backchannel)
 	if err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
@@ -156,11 +167,12 @@ func (s *Store) GetClient(ctx context.Context, clientID string) (Client, error) 
 		c      Client
 		secret *string
 		policy []byte
+		back   *string
 	)
 	err := s.pool.QueryRow(ctx, `
-		SELECT client_id, name, client_type, secret_hash, redirect_uris, session_policy, enabled
+		SELECT client_id, name, client_type, secret_hash, redirect_uris, session_policy, enabled, backchannel_logout_uri
 		FROM clients WHERE client_id = $1`, clientID).Scan(
-		&c.ClientID, &c.Name, &c.ClientType, &secret, &c.RedirectURIs, &policy, &c.Enabled)
+		&c.ClientID, &c.Name, &c.ClientType, &secret, &c.RedirectURIs, &policy, &c.Enabled, &back)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Client{}, ErrNotFound
 	}
@@ -169,6 +181,9 @@ func (s *Store) GetClient(ctx context.Context, clientID string) (Client, error) 
 	}
 	if secret != nil {
 		c.SecretHash = *secret
+	}
+	if back != nil {
+		c.BackchannelLogoutURI = *back
 	}
 	dec := json.NewDecoder(bytes.NewReader(policy))
 	dec.DisallowUnknownFields()

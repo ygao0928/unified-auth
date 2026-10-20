@@ -13,7 +13,16 @@
 - **P1-AC-06** 刷新时同时检查空闲超时、绝对时长和当前 refresh token 的 TTL，先到期者返回 `AUTH_LOGIN_REQUIRED`。
 - **P4-BUS-01** `EventBus` 接口和本机房 Redis Stream 的 XADD / XRANGE。没有保留期裁剪，也没有写到其他机房。
 
-未完成：P1-AC-07、P1-ADM-01、P1-DOC-01。`client_credentials`、token exchange、CAS / SAML 不在本服务里。
+另外已挂上设计 §5.4 的四个端点，它们还不是某条 P1 任务的全部验收：
+
+- `GET /oauth2/logout`：RP-Initiated Logout。结束全局会话，向登记了 `backchannel_logout_uri` 的应用 POST `logout_token`，并发布 `auth.revoked`（`type=session`，`reason=logout`）。`post_logout_redirect_uri` 与 `redirect_uris` 精确匹配。上游登出仍不支持（R1）。没有跳转地址时返回 204。
+- `GET /oauth2/userinfo`：Bearer `at+jwt`。空的可选字段不返回。
+- `POST /oauth2/revoke`：RFC 7009。结束对应应用会话，不结束整个全局会话。公开客户端只能吊销自己的 token。发布 `auth.revoked`（`type=app_session`，`reason=logout`）。未知 token 返回 200。
+- `POST /oauth2/introspect`：RFC 7662。只接受机密客户端。只能看到属于自己的 token。
+
+refresh token 重放在吊销整条链之后再发布 `auth.revoked`（`type=session`，`reason=refresh_reused`）。P4-AC-04 的上游登出、SAML / CAS 以及管理端踢下线还没做。
+
+未完成：P1-AC-07、P1-ADM-01、P1-DOC-01。`client_credentials`、token exchange、CAS / SAML 不在本服务里。内省的「仅内网」没有在进程里做网络限制。
 
 ## 本地
 

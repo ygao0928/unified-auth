@@ -114,6 +114,7 @@ func (h *Handler) issueTokens(ctx context.Context, client pgstore.Client, gs ses
 			"aud": client.ClientID,
 			"exp": now + int64(life.AccessTokenTTL),
 			"iat": now,
+			"sid": gs.SID,
 		}
 		putString(idClaims, "nonce", nonce)
 		putString(idClaims, "name", deref(user.Name))

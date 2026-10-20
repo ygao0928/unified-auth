@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/ygao0928/unified-auth/auth-center/internal/config"
+	"github.com/ygao0928/unified-auth/auth-center/internal/eventbus/redisstream"
 	"github.com/ygao0928/unified-auth/auth-center/internal/httpserver"
 	"github.com/ygao0928/unified-auth/auth-center/internal/idp"
 	"github.com/ygao0928/unified-auth/auth-center/internal/idp/oidc"
@@ -75,6 +76,7 @@ func Run(ctx context.Context, cfg config.Config, logger *slog.Logger) error {
 		Store:       pgstore.New(pool, cfg.AccessTokenTTLCap, cfg.LifetimeDefaults()),
 		Sessions:    session.New(rdb),
 		IDPs:        providers,
+		Bus:         redisstream.New(rdb),
 		Logger:      logger,
 	})
 	if err != nil {

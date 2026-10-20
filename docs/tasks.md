@@ -76,7 +76,7 @@ P0 的契约文件在仓库里已有草案。下面仍把它们列为 P0 任务�
 | P4-BUS-01 | EventBus 与 Redis Streams | 可替换接口。首期每个机房一条 `auth:events`（`auth.revoked` 与 `authz.changed`）。每个 SDK 实例自己的游标 `XREAD`，不共用 consumer group。流保留 `access_token_ttl_cap + clock_skew` | P1-INF-01 | 4 | 两个实例都收到同一条事件；断线后能从游标补上。游标被裁掉时走 `GET /api/v1/revocations?since=` |
 | P4-BUS-02 | 写入每个机房的流 | 发布方把同一事件写入各机房 Redis。远程失败要重试 | P4-BUS-01 | 2 | 远程 Redis 可达时，5 秒内另一机房的订阅者收到事件。写失败时的空窗见 R6 |
 | P4-AC-03 | 公网 SSE | `GET /api/v1/revocations/stream`：15 秒 ping，`Last-Event-ID`，超保留期再补拉。内网仍走事件通道 | P4-AC-02 | 3 | 断线重连不丢保留期内的事件 |
-| P4-AC-04 | 单点登出 | 按全局会话给各应用发 OIDC back-channel logout。上游是否支持登出未确认（R1）；中心侧先闭环 | P4-AC-02 | 3 | 登出一个全局会话后，其应用会话都收到吊销 |
+| P4-AC-04 | 单点登出 | 按全局会话给各应用发 OIDC back-channel logout。上游是否支持登出未确认（R1）；中心侧先闭环。RP-Initiated Logout（结束全局会话、有 `backchannel_logout_uri` 时 POST `logout_token`、发布 `auth.revoked` type=session）可以先于管理端下线落地。SAML / CAS 登出和由管理端触发的下线仍依赖 P4-AC-02，不在这一条的先做范围里 | P4-AC-02 | 3 | 登出一个全局会话后，其应用会话都收到吊销 |
 | P4-SDK-01 | 三端吊销同步 | `revocation.channel`：`auto` / `mq` / `sse` / `none`。`mq` 即 EventBus，首期 Redis Streams。本地保留时间不得小于 cap + `clock_skew`（默认 1860 秒） | P4-BUS-01、P2-GO-01、P2-PY-01、P2-JV-01 | 4 | 吊销类 token 用例在接上真实事件后结果不变 |
 
 关键路径约 10 人日：P4-BUS-01 → P4-BUS-02，以及 P4-AC-02 → P4-SDK-01。
