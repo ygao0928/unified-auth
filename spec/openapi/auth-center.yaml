@@ -493,7 +493,7 @@ components:
         refresh_token_ttl:
           type: integer
           minimum: 1
-          description: 仅用户客户端。省略时等于该客户端的 absolute_session_ttl。m2m 不签发 refresh token
+          description: 仅用户客户端。省略时用全局默认 600 秒，与 absolute_session_ttl 无关。m2m 不签发 refresh token。刷新仍须同时满足 idle_timeout 与 absolute_session_ttl，先到期者生效
         idle_timeout:
           type: integer
           minimum: 1

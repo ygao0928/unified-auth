@@ -199,7 +199,7 @@ JOSE 头 `typ` 必须是 `at+jwt`（也接受 `application/at+jwt`，不区分�
 
 不认识的 claim 一律忽略。JWT 里不放权限点。出现了的可选字段必须是正确的类型，否则视为 token 无效。
 
-**Refresh Token**：使用不透明随机串，存储在 Redis 中；每次使用后轮换，检测到旧 token 被重复使用时，吊销整个会话链。m2m 不签发 refresh token。用户客户端的 refresh token 有效期为 `refresh_token_ttl`；客户端未配置时，等于该客户端的会话绝对时长。刷新还要同时满足空闲超时和会话绝对时长，先到期的那个生效。
+**Refresh Token**：使用不透明随机串，存储在 Redis 中；每次使用后轮换，检测到旧 token 被重复使用时，吊销整个会话链。m2m 不签发 refresh token。用户客户端的 refresh token 有效期为 `refresh_token_ttl`，全局默认 600 秒（10 分钟），与会话绝对时长无关；客户端可以单独覆盖。刷新还要同时满足空闲超时和会话绝对时长，先到期的那个生效。
 
 **ID Token**：按 OIDC 标准签发，只给前端或客户端用来展示用户信息，**不能**拿来访问 API。
 
@@ -207,14 +207,16 @@ JOSE 头 `typ` 必须是 `at+jwt`（也接受 `application/at+jwt`，不区分�
 
 | 客户端类型 | `access_token_ttl` | `refresh_token_ttl` | `idle_timeout` | `absolute_session_ttl` |
 |---|---|---|---|---|
-| web / ssr | 10 分钟（600 秒） | 等于会话绝对时长，默认 12 小时 | 2 小时（7200 秒） | 12 小时（43200 秒） |
-| app | 10 分钟（600 秒） | 等于会话绝对时长，默认 30 天 | 7 天（604800 秒） | 30 天（2592000 秒） |
-| miniapp | 10 分钟（600 秒） | 等于会话绝对时长，默认 30 天 | 7 天（604800 秒） | 30 天（2592000 秒） |
+| web / ssr | 10 分钟（600 秒） | 10 分钟（600 秒） | 2 小时（7200 秒） | 12 小时（43200 秒） |
+| app | 10 分钟（600 秒） | 10 分钟（600 秒） | 7 天（604800 秒） | 30 天（2592000 秒） |
+| miniapp | 10 分钟（600 秒） | 10 分钟（600 秒） | 7 天（604800 秒） | 30 天（2592000 秒） |
 | m2m（机器对机器） | 30 分钟（1800 秒） | 不签发 | — | — |
 
-字段都是整数秒。`access_token_ttl` 还要受全局上限 `access_token_ttl_cap` 约束，该项是认证中心配置，默认 1800 秒（与 m2m 的全局默认相同）。客户端填的值或全局默认若超过上限，按上限截断。因此任何 access token 的有效期都不会超过 `access_token_ttl_cap`。要签发更长的 access token，先调高这个上限；吊销保留时间和 JWKS 旧密钥窗口会跟着变长。
+字段都是整数秒。`access_token_ttl` 还要受全局上限 `access_token_ttl_cap` 约束，该项是认证中心配置，默认 1800 秒（与 m2m 的全局默认相同）。客户端填的值或全局默认若超过上限，按上限截断。因此任何 access token 的有效期都不会超过 `access_token_ttl_cap`。要签发更长的 access token，先调高这个上限；吊销保留时间和 JWKS 旧密钥窗口会跟着变长。`refresh_token_ttl` 不受这个上限约束。
 
 空闲超时和会话绝对时长沿用上表，同样可以按客户端覆盖。m2m 没有会话，这两项和 refresh token 都不适用。
+
+全局默认下，用户客户端的 `refresh_token_ttl` 与 `access_token_ttl` 同为 600 秒，短于 `idle_timeout` 和 `absolute_session_ttl`。不覆盖时，refresh token 会先于空闲超时和会话绝对时长到期。轮换出来的新 refresh token，600 秒从轮换当时重计，还是整条链从首次签发起只给 600 秒，尚未规定，见 §14 D5。Redis 中 `auth:rt:{refresh_hash}` 的 TTL 取该客户端的 `refresh_token_ttl`。
 
 **密钥管理**：
 - 签名私钥存放在 KMS 或 K8s Secret 中，各机房共用同一套。
@@ -241,7 +243,7 @@ auth:gs:{sid}                    HASH  sub, idp, created_at, last_active, abs_ex
 auth:gs:{sid}:apps               SET   app_session_id...
 auth:as:{asid}                   HASH  sid, client_id, client_type, created_at, last_active
 auth:user:{sub}:sessions         ZSET  asid -> created_at（按客户端类型分 key，用于多端计数）
-auth:rt:{refresh_hash}           HASH  asid, family_id, used
+auth:rt:{refresh_hash}           HASH  asid, family_id, used   TTL = 该客户端 refresh_token_ttl
 auth:revoked:sid                 SET   最近被吊销的 sid（TTL >= access_token_ttl_cap + clock_skew，默认 1860 秒）
 ```
 
@@ -696,6 +698,7 @@ User {
 | R5 | 跨机房会话路由复杂 | 刷新失败 | 初期使用 GSLB 让同一用户固定访问同一机房，后续再优化 |
 | R6 | Redis Stream 不跨机房复制。发布方写远程机房失败时，该机房收不到事件 | 强制下线可能超过 5 秒 | 发布方重试；未送达期间靠 access token 过期兜底。换 Kafka 后用 MirrorMaker 2 做复制 |
 | D1 | 事件通道选型 | — | 已决定：首期 Redis Streams，包在可替换的 EventBus 后面；Kafka 为预定替代。跨机房限制见 R6 |
-| D2 | 默认 token 有效期和会话策略数值 | — | 已决定：按注册客户端配置；未配置的项用 5.2 的全局默认。表中的数字就是全局默认 |
+| D2 | 默认 token 有效期和会话策略数值 | — | 已决定：按注册客户端配置；未配置的项用 5.2 的全局默认。`refresh_token_ttl` 的全局默认是 600 秒，与会话绝对时长无关 |
+| D5 | 默认 refresh token 只有 600 秒，与用户 access token 相同，并短于空闲超时和会话绝对时长。轮换后是否重新计算这 600 秒尚未规定 | 不覆盖时，用户每隔约 10 分钟就要重新登录，或只能靠连续轮换撑到空闲/绝对时长。App、小程序把 refresh token 当作长期凭证存放时，默认值盖不住 §6.1 的 7 天 / 30 天 | 保持 600 秒这一全局默认。客户端可以单独配得更长。轮换是否重计见评审 |
 | D3 | 首批启用的下游兼容协议 | 排期 | 按第三方系统的实际需求排序 |
 | D4 | 小程序平台范围（微信 / 企业微信 / 钉钉） | 适配工作量 | 先做微信，其他平台按需增加 |
