@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://unified-auth.spec/schemas/authz-changed-event.schema.json",
+  "title": "Authorization Changed Event (authz.changed)",
+  "description": "用户权限或角色定义变更事件。SDK 收到后失效对应缓存：scope=user 失效 (sub, app)；scope=role 失效所有持有该角色用户在 apps 内的缓存（SDK 可简化为清空 apps 内全部缓存）；scope=app 清空该应用全部缓存。",
+  "type": "object",
+  "required": ["id", "event", "scope", "ts"],
+  "properties": {
+    "id": { "type": "string", "minLength": 1 },
+    "event": { "const": "authz.changed" },
+    "scope": { "type": "string", "enum": ["user", "role", "app"] },
+    "sub": { "type": "string", "description": "scope=user 时必填" },
+    "role_id": { "type": "string", "description": "scope=role 时必填" },
+    "apps": { "type": "array", "items": { "type": "string" }, "description": "受影响的应用；全局角色变更时可能为 [\"*\"]" },
+    "perm_ver": { "type": "integer", "minimum": 0, "description": "scope=user 时为变更后的版本号" },
+    "ts": { "type": "integer" }
+  },
+  "allOf": [
+    { "if": { "properties": { "scope": { "const": "user" } } }, "then": { "required": ["sub", "perm_ver"] } },
+    { "if": { "properties": { "scope": { "const": "role" } } }, "then": { "required": ["role_id", "apps"] } },
+    { "if": { "properties": { "scope": { "const": "app" } } }, "then": { "required": ["apps"] } }
+  ],
+  "additionalProperties": true,
+  "examples": [
+    { "id": "az_01", "event": "authz.changed", "scope": "user", "sub": "E10023", "apps": ["meeting"], "perm_ver": 8, "ts": 1792374900 }
+  ]
+}

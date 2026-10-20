@@ -1,0 +1,296 @@
+{
+  "spec_version": "0.1.0",
+  "has_perm": [
+    {
+      "id": "exact_match",
+      "granted": [
+        "meeting:user:list",
+        "meeting:record:*",
+        "*:audit:view"
+      ],
+      "required": "meeting:user:list",
+      "expect": true
+    },
+    {
+      "id": "no_match",
+      "granted": [
+        "meeting:user:list",
+        "meeting:record:*",
+        "*:audit:view"
+      ],
+      "required": "meeting:user:delete",
+      "expect": false
+    },
+    {
+      "id": "wildcard_action",
+      "granted": [
+        "meeting:user:list",
+        "meeting:record:*",
+        "*:audit:view"
+      ],
+      "required": "meeting:record:export",
+      "expect": true
+    },
+    {
+      "id": "wildcard_app",
+      "granted": [
+        "meeting:user:list",
+        "meeting:record:*",
+        "*:audit:view"
+      ],
+      "required": "crm:audit:view",
+      "expect": true
+    },
+    {
+      "id": "wildcard_app_other_resource",
+      "granted": [
+        "meeting:user:list",
+        "meeting:record:*",
+        "*:audit:view"
+      ],
+      "required": "crm:audit:export",
+      "expect": false
+    },
+    {
+      "id": "superadmin",
+      "granted": [
+        "*:*:*"
+      ],
+      "required": "anything:at:all",
+      "expect": true
+    },
+    {
+      "id": "empty_granted",
+      "granted": [],
+      "required": "meeting:user:list",
+      "expect": false
+    },
+    {
+      "id": "case_sensitive",
+      "granted": [
+        "meeting:user:list"
+      ],
+      "required": "meeting:User:list",
+      "expect": "programming_error"
+    },
+    {
+      "id": "required_with_wildcard",
+      "granted": [
+        "meeting:user:list",
+        "meeting:record:*",
+        "*:audit:view"
+      ],
+      "required": "meeting:user:*",
+      "expect": "programming_error"
+    },
+    {
+      "id": "required_two_segments",
+      "granted": [
+        "meeting:user:list",
+        "meeting:record:*",
+        "*:audit:view"
+      ],
+      "required": "meeting:user",
+      "expect": "programming_error"
+    },
+    {
+      "id": "invalid_granted_two_segments_ignored",
+      "granted": [
+        "meeting:*"
+      ],
+      "required": "meeting:user:list",
+      "expect": false
+    },
+    {
+      "id": "invalid_granted_uppercase_ignored",
+      "granted": [
+        "Meeting:user:list"
+      ],
+      "required": "meeting:user:list",
+      "expect": false
+    },
+    {
+      "id": "invalid_granted_mixed",
+      "granted": [
+        "meeting:*",
+        "meeting:user:list"
+      ],
+      "required": "meeting:user:list",
+      "expect": true
+    },
+    {
+      "id": "wildcard_no_prefix_match",
+      "granted": [
+        "meeting:rec*:export"
+      ],
+      "required": "meeting:record:export",
+      "expect": false
+    }
+  ],
+  "combinations": [
+    {
+      "id": "require_all_ok",
+      "granted": [
+        "meeting:user:list",
+        "meeting:record:*",
+        "*:audit:view"
+      ],
+      "mode": "all",
+      "required": [
+        "meeting:user:list",
+        "meeting:record:export"
+      ],
+      "expect": true
+    },
+    {
+      "id": "require_all_fail",
+      "granted": [
+        "meeting:user:list",
+        "meeting:record:*",
+        "*:audit:view"
+      ],
+      "mode": "all",
+      "required": [
+        "meeting:user:list",
+        "meeting:user:delete"
+      ],
+      "expect": false
+    },
+    {
+      "id": "require_any_ok",
+      "granted": [
+        "meeting:user:list",
+        "meeting:record:*",
+        "*:audit:view"
+      ],
+      "mode": "any",
+      "required": [
+        "meeting:user:delete",
+        "meeting:record:export"
+      ],
+      "expect": true
+    },
+    {
+      "id": "require_any_fail",
+      "granted": [
+        "meeting:user:list",
+        "meeting:record:*",
+        "*:audit:view"
+      ],
+      "mode": "any",
+      "required": [
+        "meeting:user:delete",
+        "crm:user:list"
+      ],
+      "expect": false
+    },
+    {
+      "id": "require_all_empty",
+      "granted": [
+        "meeting:user:list",
+        "meeting:record:*",
+        "*:audit:view"
+      ],
+      "mode": "all",
+      "required": [],
+      "expect": "programming_error"
+    },
+    {
+      "id": "require_any_empty",
+      "granted": [
+        "meeting:user:list",
+        "meeting:record:*",
+        "*:audit:view"
+      ],
+      "mode": "any",
+      "required": [],
+      "expect": "programming_error"
+    }
+  ],
+  "data_scope": [
+    {
+      "id": "single_self",
+      "role_scopes": [
+        "self"
+      ],
+      "dept_id": "D1",
+      "expect": "self"
+    },
+    {
+      "id": "widest_wins",
+      "role_scopes": [
+        "self",
+        "dept_and_sub",
+        "dept"
+      ],
+      "dept_id": "D1",
+      "expect": "dept_and_sub"
+    },
+    {
+      "id": "all_wins",
+      "role_scopes": [
+        "dept",
+        "all"
+      ],
+      "dept_id": "D1",
+      "expect": "all"
+    },
+    {
+      "id": "null_ignored",
+      "role_scopes": [
+        null,
+        "dept"
+      ],
+      "dept_id": "D1",
+      "expect": "dept"
+    },
+    {
+      "id": "all_null",
+      "role_scopes": [
+        null,
+        null
+      ],
+      "dept_id": "D1",
+      "expect": null
+    },
+    {
+      "id": "no_roles",
+      "role_scopes": [],
+      "dept_id": "D1",
+      "expect": null
+    },
+    {
+      "id": "dept_degrade_no_dept",
+      "role_scopes": [
+        "dept"
+      ],
+      "dept_id": null,
+      "expect": "self"
+    },
+    {
+      "id": "dept_and_sub_degrade_no_dept",
+      "role_scopes": [
+        "dept_and_sub",
+        "self"
+      ],
+      "dept_id": null,
+      "expect": "self"
+    },
+    {
+      "id": "all_no_degrade",
+      "role_scopes": [
+        "all"
+      ],
+      "dept_id": null,
+      "expect": "all"
+    },
+    {
+      "id": "self_no_dept",
+      "role_scopes": [
+        "self"
+      ],
+      "dept_id": null,
+      "expect": "self"
+    }
+  ]
+}

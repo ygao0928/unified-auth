@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://unified-auth.spec/schemas/permissions-manifest.schema.json",
+  "title": "Permissions Manifest (permissions.yaml)",
+  "description": "应用在代码仓库中维护的权限清单，由 CI 或服务启动时通过 PUT /api/v1/apps/{app}/permissions 幂等同步。清单中不再出现的权限点在中心被标记为 deprecated，不物理删除。权限点不允许通配符，且第一段必须等于 app。",
+  "type": "object",
+  "required": ["app", "permissions"],
+  "properties": {
+    "version": { "type": "integer", "const": 1, "description": "清单格式版本" },
+    "app": { "type": "string", "pattern": "^[a-z0-9][a-z0-9_-]{0,63}$" },
+    "permissions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["code", "name"],
+        "properties": {
+          "code": { "type": "string", "pattern": "^[a-z0-9][a-z0-9_-]{0,63}(:[a-z0-9][a-z0-9_-]{0,63}){2}$" },
+          "name": { "type": "string", "minLength": 1, "maxLength": 64 },
+          "description": { "type": "string", "maxLength": 512 },
+          "group": { "type": "string", "maxLength": 64, "description": "管理后台中的分组展示名" },
+          "sensitive": { "type": "boolean", "default": false, "description": "敏感操作；授权时管理后台给出额外提示，后续审批流可据此强制审批" }
+        },
+        "additionalProperties": false
+      }
+    },
+    "roles": {
+      "type": "array",
+      "description": "可选：预置的应用角色模板，仅首次创建时生效，之后由应用管理员在中心维护",
+      "items": {
+        "type": "object",
+        "required": ["key", "name", "permissions"],
+        "properties": {
+          "key": { "type": "string", "pattern": "^[a-z0-9][a-z0-9_-]{0,63}$" },
+          "name": { "type": "string" },
+          "permissions": { "type": "array", "items": { "type": "string", "pattern": "^(\\*|[a-z0-9][a-z0-9_-]{0,63})(:(\\*|[a-z0-9][a-z0-9_-]{0,63})){2}$" } },
+          "data_scope": { "type": ["string", "null"], "enum": ["self", "dept", "dept_and_sub", "all", null] },
+          "default": { "type": "boolean", "default": false, "description": "是否作为本应用新用户的默认角色" }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false,
+  "examples": [
+    {
+      "version": 1,
+      "app": "meeting",
+      "permissions": [
+        { "code": "meeting:user:list", "name": "查看参会人", "group": "参会人" },
+        { "code": "meeting:record:export", "name": "导出会议纪要", "group": "纪要", "sensitive": true }
+      ],
+      "roles": [
+        { "key": "member", "name": "普通成员", "permissions": ["meeting:user:list"], "data_scope": "self", "default": true }
+      ]
+    }
+  ]
+}

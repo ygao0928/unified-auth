@@ -1,0 +1,15 @@
+name: conformance
+on:
+  push:
+    paths: ["spec/**", "conformance/**"]
+  pull_request:
+    paths: ["spec/**", "conformance/**"]
+jobs:
+  reference:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: pip install pyjwt cryptography jsonschema pyyaml openapi-spec-validator
+      - run: python3 conformance/tools/run_reference.py

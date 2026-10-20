@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://unified-auth.spec/schemas/sdk-config.schema.json",
+  "title": "SDK Config",
+  "description": "三端 SDK 统一配置项（YAML/环境变量/代码配置均映射到此结构）。环境变量命名：UA_ + 大写路径，如 UA_ISSUER、UA_REVOCATION_CHANNEL。",
+  "type": "object",
+  "required": ["issuer", "client_id"],
+  "properties": {
+    "issuer": { "type": "string", "format": "uri" },
+    "client_id": { "type": "string", "minLength": 1 },
+    "client_secret": { "type": "string", "description": "BFF / SSR / m2m 必填；纯资源服务不需要。禁止写入代码仓库" },
+    "mode": { "type": "string", "enum": ["gateway", "standalone"], "default": "gateway", "description": "standalone 启用内置登录跳转/回调/登出路由" },
+    "redirect_uri": { "type": "string", "format": "uri", "description": "standalone 模式必填" },
+    "post_logout_redirect_uri": { "type": "string", "format": "uri" },
+    "public_paths": { "type": "array", "items": { "type": "string" }, "default": [], "description": "免认证路径，支持 * 单段与 ** 多段通配" },
+    "clock_skew": { "type": "integer", "minimum": 0, "maximum": 300, "default": 60 },
+    "jwks": {
+      "type": "object",
+      "properties": {
+        "refresh_interval": { "type": "integer", "minimum": 60, "default": 600 },
+        "unknown_kid_min_interval": { "type": "integer", "minimum": 5, "default": 30 }
+      },
+      "additionalProperties": false
+    },
+    "revocation": {
+      "type": "object",
+      "properties": {
+        "channel": { "type": "string", "enum": ["auto", "mq", "sse", "none"], "default": "auto" },
+        "mq": { "type": "object", "description": "MQ 连接参数，依具体 MQ 实现定义" },
+        "retention": { "type": "integer", "default": 1860, "description": "本地吊销记录保留秒数 = access token 最长有效期 + clock_skew" }
+      },
+      "additionalProperties": false
+    },
+    "authz": {
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean", "default": true },
+        "cache_ttl": { "type": "integer", "minimum": 0, "default": 300 },
+        "stale_on_error": { "type": "boolean", "default": true }
+      },
+      "additionalProperties": false
+    },
+    "cookie": {
+      "type": "object",
+      "description": "standalone + BFF 模式下的应用会话 Cookie",
+      "properties": {
+        "name": { "type": "string", "default": "ua_session" },
+        "domain": { "type": "string", "description": "同父域名共享时设置为 .corp.com" },
+        "same_site": { "type": "string", "enum": ["Lax", "Strict", "None"], "default": "Lax" },
+        "secure": { "type": "boolean", "default": true }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

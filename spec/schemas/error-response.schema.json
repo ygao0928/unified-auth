@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://unified-auth.spec/schemas/error-response.schema.json",
+  "title": "Error Response",
+  "description": "认证中心、网关、SDK 返回的统一错误体。code 取值见 error-codes.yaml。OAuth2 标准端点（/oauth2/token 等）在此基础上同时返回 RFC 6749 的 error / error_description 字段以兼容标准客户端。",
+  "type": "object",
+  "required": ["code", "message", "trace_id"],
+  "properties": {
+    "code": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]*$" },
+    "message": { "type": "string", "description": "面向开发者的英文描述，不得包含 token 原文或敏感信息" },
+    "trace_id": { "type": "string" },
+    "details": { "type": "object", "description": "可选的结构化补充信息，如 required_perm、retry_after" },
+    "bind_ticket": { "type": "string", "description": "仅 AUTH_BINDING_REQUIRED 时出现" },
+    "error": { "type": "string", "description": "RFC 6749 错误码，仅 OAuth2 端点" },
+    "error_description": { "type": "string" }
+  },
+  "additionalProperties": false,
+  "examples": [
+    { "code": "AUTH_TOKEN_EXPIRED", "message": "access token expired", "trace_id": "4bf92f3577b34da6a3ce929d0e0e4736" },
+    { "code": "PERM_DENIED", "message": "permission denied", "trace_id": "00f067aa0ba902b7", "details": { "required_perm": "meeting:record:export" } }
+  ]
+}
