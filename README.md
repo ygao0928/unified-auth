@@ -4,7 +4,7 @@
 
 ## 文档
 
-- [设计文档 v0.1（待评审）](docs/unified-auth-design.md)
+- [设计文档 v0.1（待评审）](docs/design.md)
 - [契约规范 spec/](spec/README.md)：OpenAPI、claims、错误码、事件、token 校验算法、权限规则
 - [一致性测试 conformance/](conformance/README.md)：三端 SDK 必须通过的测试向量
 
