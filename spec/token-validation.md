@@ -70,7 +70,7 @@
 
 说明：
 - `user` 和 `client` 类型使用 `not_before` 判断，所以吊销之后**重新签发**的 token 不受影响。例如用户被强制下线后重新登录，新 token 可以正常使用。
-- 每条吊销记录在本地保存到 `event.ts + access_token 最长有效期（默认 1800 秒）+ clock_skew` 为止，之后可以清理。因为到那个时间点，所有受影响的 token 都已经自然过期了。
+- 每条吊销记录在本地保存到 `event.ts + access_token_ttl_cap + clock_skew` 为止，之后可以清理。`access_token_ttl_cap` 是认证中心配置的 access token 有效期上限，默认 1800 秒；任何客户端的有效 access token 时长都不得超过它，所以到这个时间点，受影响的 token 都已经自然过期。`clock_skew` 默认 60 秒，默认一共保留 1860 秒。SDK 的 `revocation.retention` 不得小于该值。
 
 ## JWKS 缓存
 

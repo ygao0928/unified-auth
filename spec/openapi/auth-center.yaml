@@ -11,6 +11,7 @@ info:
       Admin 类接口只对内网开放。
     - 错误响应统一为 `ErrorResponse`，错误码见 `../error-codes.yaml`。
     - SAML IdP（`/saml/*`）与 CAS Server（`/cas/*`）兼容通道遵循各自协议，不在本文件描述。
+    - 注册客户端的有效期覆盖见 `ClientLifetimes`。应用注册的 HTTP 接口尚未列入本文件。
 servers:
   - url: https://auth.corp.com
     description: 统一 issuer（内外网 split DNS）
@@ -45,7 +46,7 @@ paths:
     get:
       tags: [oidc]
       summary: 签名公钥集合
-      description: "轮换前同时包含当前密钥与下一把密钥；轮换完成后，上一把密钥继续发布 access token 最长有效期 + previous_key_buffer 秒。previous_key_buffer 为认证中心配置，整数秒，默认 60。响应带 `Cache-Control: max-age=600`。"
+      description: "轮换前同时包含当前密钥与下一把密钥；轮换完成后，上一把密钥继续发布 access_token_ttl_cap + previous_key_buffer 秒。access_token_ttl_cap 为认证中心配置，整数秒，默认 1800，任何客户端的 access token 有效期都不得超过它。previous_key_buffer 默认 60。因此默认一共继续发布 1860 秒。响应带 `Cache-Control: max-age=600`。"
       security: []
       responses:
         "200":
@@ -476,6 +477,32 @@ components:
               client_type: { type: string, enum: [web, ssr, app, miniapp] }
               created_at: { type: integer }
               last_active_at: { type: integer }
+
+    ClientLifetimes:
+      type: object
+      description: |
+        注册客户端 `session_policy` 中的有效期覆盖，单位秒。省略的字段使用该 client_type 的全局默认（设计文档 §5.2）。
+        access_token_ttl 的有效值不得超过全局 access_token_ttl_cap（默认 1800）。
+        m2m 不使用 refresh_token_ttl、idle_timeout、absolute_session_ttl。
+        应用注册接口尚未列入本文件。
+      properties:
+        access_token_ttl:
+          type: integer
+          minimum: 1
+          description: 用户客户端全局默认 600，m2m 全局默认 1800。有效值取 min(本字段或全局默认, access_token_ttl_cap)
+        refresh_token_ttl:
+          type: integer
+          minimum: 1
+          description: 仅用户客户端。省略时等于该客户端的 absolute_session_ttl。m2m 不签发 refresh token
+        idle_timeout:
+          type: integer
+          minimum: 1
+          description: web/ssr 全局默认 7200，app/miniapp 全局默认 604800。m2m 不适用
+        absolute_session_ttl:
+          type: integer
+          minimum: 1
+          description: web/ssr 全局默认 43200，app/miniapp 全局默认 2592000。m2m 不适用
+      additionalProperties: false
 
     RevokeRequest:
       type: object
