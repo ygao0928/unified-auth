@@ -1,0 +1,1071 @@
+{
+  "spec_version": "0.1.0",
+  "now": 1792375200,
+  "config": {
+    "issuer": "https://auth.example.test",
+    "client_id": "meeting",
+    "clock_skew": 60
+  },
+  "jwks": {
+    "initial": "../keys/jwks.json",
+    "after_refresh": "../keys/jwks-rotated.json"
+  },
+  "cases": [
+    {
+      "id": "valid_full",
+      "description": "全部可选 claims 齐全",
+      "token": "eyJhbGciOiJSUzI1NiIsImtpZCI6InJzYS0xIiwidHlwIjoiYXQrand0In0.eyJpc3MiOiJodHRwczovL2F1dGguZXhhbXBsZS50ZXN0Iiwic3ViIjoiRTEwMDIzIiwiYXVkIjoibWVldGluZyIsImV4cCI6MTc5MjM3NTc0MCwiaWF0IjoxNzkyMzc1MTQwLCJqdGkiOiJqdGktMDAwMSIsImF6cCI6Im1lZXRpbmciLCJjbGllbnRfdHlwZSI6IndlYiIsInBlcm1fdmVyIjo3LCJzaWQiOiJiajEuc2Vzcy0wMDAxIiwiYXNpZCI6ImFzLmFwcC0wMDAxIiwibmFtZSI6Ilx1NWYyMFx1NGUwOSIsImVtYWlsIjoiemhhbmdzYW5AY29ycC5leGFtcGxlIiwiZGVwdF9pZCI6IkQxMDAyIiwiZGVwdF9uYW1lIjoiXHU3ODE0XHU1M2QxXHU0ZTAwXHU5MGU4Iiwic2NvcGUiOiJvcGVuaWQgcHJvZmlsZSBtZWV0aW5nLnJlYWQiLCJhbXIiOlsicHdkIiwib3RwIl0sImF1dGhfdGltZSI6MTc5MjM3NTA4MH0.CMjjDS_Zz_iOkqYppCRfX_3ZqUh8zSEYO21EJyDJu3TUwhCZDGIURLYVEArO-YNyDDTiFhm04niLDVKytf6zg5y48RrHB2ae9FCPlerzyQeiy1904OrrQ__bCstCu6ZeY1AeXMRzpU5x_gi8ZAcB75FuqA5HNsa8gKxxAgGRWx6fMQPNs21GPmwJyqzBxiePKEjA_fLgxgcHGy8KObGYf3iuBPg5BXsJ_oDryZ5g1TS26As8D9R3rZ1aphoeTEzAj-Z4xI4jRS_4iX0QOOYrwQVD9s53xH3FYig49pEAR6MkS2TALBAhk8BxqOswoWBdXm2o67IsbGLRMfZREAG5_Q",
+      "expect": {
+        "valid": true,
+        "error": null,
+        "user": {
+          "emp_no": "E10023",
+          "subject": "E10023",
+          "is_machine": false,
+          "name": "张三",
+          "email": "zhangsan@corp.example",
+          "dept_id": "D1002",
+          "dept_name": "研发一部",
+          "client_id": "meeting",
+          "client_type": "web",
+          "sid": "bj1.sess-0001",
+          "asid": "as.app-0001",
+          "scopes": [
+            "openid",
+            "profile",
+            "meeting.read"
+          ],
+          "perm_ver": 7,
+          "amr": [
+            "pwd",
+            "otp"
+          ],
+          "auth_time": 1792375080,
+          "token_id": "jti-0001",
+          "expires_at": 1792375740
+        }
+      }
+    },
+    {
+      "id": "valid_minimal",
+      "description": "只有必填 claims，可选字段全部缺失 → User 对应字段为 null/[]",
+      "token": "eyJhbGciOiJSUzI1NiIsImtpZCI6InJzYS0xIiwidHlwIjoiYXQrand0In0.eyJpc3MiOiJodHRwczovL2F1dGguZXhhbXBsZS50ZXN0Iiwic3ViIjoiRTEwMDIzIiwiYXVkIjoibWVldGluZyIsImV4cCI6MTc5MjM3NTc0MCwiaWF0IjoxNzkyMzc1MTQwLCJqdGkiOiJqdGktMDAwMSIsImF6cCI6Im1lZXRpbmciLCJjbGllbnRfdHlwZSI6IndlYiIsInBlcm1fdmVyIjo3LCJzaWQiOiJiajEuc2Vzcy0wMDAxIiwiYXNpZCI6ImFzLmFwcC0wMDAxIn0.ocXfmd7TkOqSKYSoRCUChxXOwMZR7_1o70Fh1fQY6DNp5-8VLpAIhIgDqZddFNV19vXfMW_y-OvTfEemXMT_s31al8Uw62_y4Uz9u243ZwVVVyPYEufzWuOD606I2W6X2tsT5z2_D1LXTz4amswI0U_IGuPaIPaxiAN9oFawAIFeqvC4CTfyrJQzsybL1mGMXusSJ5hAYlCpsd4S6UY85n8CH2tNx4EnfNEtoSYB919kP9GkiY3hq8uqj3ey87iNC9_gsZes3OA5bymKzu8_q1HFfP1mpGDrGRYnub_BhQ0lACagk2-G0FFtiplRibTBgSmAyJoANSILLalewJ8z1A",
+      "expect": {
+        "valid": true,
+        "error": null,
+        "user": {
+          "emp_no": "E10023",
+          "subject": "E10023",
+          "is_machine": false,
+          "name": null,
+          "email": null,
+          "dept_id": null,
+          "dept_name": null,
+          "client_id": "meeting",
+          "client_type": "web",
+          "sid": "bj1.sess-0001",
+          "asid": "as.app-0001",
+          "scopes": [],
+          "perm_ver": 7,
+          "amr": [],
+          "auth_time": null,
+          "token_id": "jti-0001",
+          "expires_at": 1792375740
+        }
+      }
+    },
+    {
+      "id": "valid_empty_optional_strings",
+      "description": "可选字符串为空串视同不存在",
+      "token": "eyJhbGciOiJSUzI1NiIsImtpZCI6InJzYS0xIiwidHlwIjoiYXQrand0In0.eyJpc3MiOiJodHRwczovL2F1dGguZXhhbXBsZS50ZXN0Iiwic3ViIjoiRTEwMDIzIiwiYXVkIjoibWVldGluZyIsImV4cCI6MTc5MjM3NTc0MCwiaWF0IjoxNzkyMzc1MTQwLCJqdGkiOiJqdGktMDAwMSIsImF6cCI6Im1lZXRpbmciLCJjbGllbnRfdHlwZSI6IndlYiIsInBlcm1fdmVyIjo3LCJzaWQiOiJiajEuc2Vzcy0wMDAxIiwiYXNpZCI6ImFzLmFwcC0wMDAxIiwibmFtZSI6IiIsImRlcHRfaWQiOiIifQ.DqB5X2lQKut3hn-zeaR_jBh3wkXTpVhjoQRrQKD7nUjOZEtlkCezbwXqQW_pF33G0WB4b8P5xnKHWMCrQhB2Ytzu1dIlcCAbtCzf0IMwxJngW92qTxRyni0IcJwz_glcKB9KaSqm-meBN13bVO-XDlujUHKsOTcxQXX-bYZgwtSuxGCC-vl4McUudnke8JDQL4ZVf8ipgALh-Yos4TZRlecTqquyuYFDMIxuOR-zAxjWOhqAU0_CTvIbUpJMMJeZjp7j6-M4ersKmh73QoANWOwne5U4l22griq6j_T2HgyLhGoGqPK-yuynyF8bWY_J-1buZMU_jMD1hHdc1N723w",
+      "expect": {
+        "valid": true,
+        "error": null,
+        "user": {
+          "emp_no": "E10023",
+          "subject": "E10023",
+          "is_machine": false,
+          "name": null,
+          "email": null,
+          "dept_id": null,
+          "dept_name": null,
+          "client_id": "meeting",
+          "client_type": "web",
+          "sid": "bj1.sess-0001",
+          "asid": "as.app-0001",
+          "scopes": [],
+          "perm_ver": 7,
+          "amr": [],
+          "auth_time": null,
+          "token_id": "jti-0001",
+          "expires_at": 1792375740
+        }
+      }
+    },
+    {
+      "id": "valid_aud_array",
+      "description": "aud 为数组且包含本应用",
+      "token": "eyJhbGciOiJSUzI1NiIsImtpZCI6InJzYS0xIiwidHlwIjoiYXQrand0In0.eyJpc3MiOiJodHRwczovL2F1dGguZXhhbXBsZS50ZXN0Iiwic3ViIjoiRTEwMDIzIiwiYXVkIjpbImdhdGV3YXkiLCJtZWV0aW5nIl0sImV4cCI6MTc5MjM3NTc0MCwiaWF0IjoxNzkyMzc1MTQwLCJqdGkiOiJqdGktMDAwMSIsImF6cCI6Im1lZXRpbmciLCJjbGllbnRfdHlwZSI6IndlYiIsInBlcm1fdmVyIjo3LCJzaWQiOiJiajEuc2Vzcy0wMDAxIiwiYXNpZCI6ImFzLmFwcC0wMDAxIn0.C-UQsCSOFbH3UbvA7S_ztUbx-4TCz3nz8HNJdbdbmAsLnqlP3VzvbVu_VYGvhpLV6m3IYF_snYb8FVBxCuTDesokSW5fIC0n8Tg9K2k45BmaPHVxOCbjHbhwgo7_knbQyOkqz3gIPTyAqIiGoLZqM5W1tV7vxvnlJ1UgwvscX6QfHXr6oXtN0FAZtQg68bKxEARRi3EHx3vVX42RrA9qaoKnpbDkKT4Vkto0a9rj8YBKhCXw7s4DJFt4jhxP_HaSwhdNpqLhmNL3_JPu3vldvY9peeZLtZ9EP276XY_Syb9sk9n4tJTyFqoRqkHjs2Qo2xEGnbO_rCF5EExZNlww4w",
+      "expect": {
+        "valid": true,
+        "error": null,
+        "user": {
+          "emp_no": "E10023",
+          "subject": "E10023",
+          "is_machine": false,
+          "name": null,
+          "email": null,
+          "dept_id": null,
+          "dept_name": null,
+          "client_id": "meeting",
+          "client_type": "web",
+          "sid": "bj1.sess-0001",
+          "asid": "as.app-0001",
+          "scopes": [],
+          "perm_ver": 7,
+          "amr": [],
+          "auth_time": null,
+          "token_id": "jti-0001",
+          "expires_at": 1792375740
+        }
+      }
+    },
+    {
+      "id": "valid_unknown_claims",
+      "description": "未知 claims 必须忽略",
+      "token": "eyJhbGciOiJSUzI1NiIsImtpZCI6InJzYS0xIiwidHlwIjoiYXQrand0In0.eyJpc3MiOiJodHRwczovL2F1dGguZXhhbXBsZS50ZXN0Iiwic3ViIjoiRTEwMDIzIiwiYXVkIjoibWVldGluZyIsImV4cCI6MTc5MjM3NTc0MCwiaWF0IjoxNzkyMzc1MTQwLCJqdGkiOiJqdGktMDAwMSIsImF6cCI6Im1lZXRpbmciLCJjbGllbnRfdHlwZSI6IndlYiIsInBlcm1fdmVyIjo3LCJzaWQiOiJiajEuc2Vzcy0wMDAxIiwiYXNpZCI6ImFzLmFwcC0wMDAxIiwieF91bmtub3duIjoiaWdub3JlZCIsImV4dCI6eyJhIjoxfX0.HNtryN7g5tn2becOi6jcjrteomLu_Mmw5Ep9ezXlI8wCS_8dADq3N_w8dG9QZ_ffU3C1h0vqPwQElW-zHd_7JbLzQ_oZBwJiQ9SCyPuoEzVW_UQii6JJKZFA_CkLuVrTOQ5Ll7L0BKjPE7RJd-ivm4lXq6lZnLgyGtQTzVO_r2D3IJLV11A6bkIQtdAAkFN_wMtYiwYcpKCqsPuh5P8j7Fm8Rv7YnZLgEbMRcjDfU25AuWobDtQM-Zd1nn6H9QBn6GcGdRlB9N_WaU7IvhViLjh9Bei_Q2AJYeCT8PnIVBEoeoEY0eMm23GfmTVz3Vivpsv2CmA4XHlvhTgtGeUylQ",
+      "expect": {
+        "valid": true,
+        "error": null,
+        "user": {
+          "emp_no": "E10023",
+          "subject": "E10023",
+          "is_machine": false,
+          "name": null,
+          "email": null,
+          "dept_id": null,
+          "dept_name": null,
+          "client_id": "meeting",
+          "client_type": "web",
+          "sid": "bj1.sess-0001",
+          "asid": "as.app-0001",
+          "scopes": [],
+          "perm_ver": 7,
+          "amr": [],
+          "auth_time": null,
+          "token_id": "jti-0001",
+          "expires_at": 1792375740
+        }
+      }
+    },
+    {
+      "id": "valid_second_key",
+      "description": "使用 JWKS 中第二把 RSA 密钥签名",
+      "token": "eyJhbGciOiJSUzI1NiIsImtpZCI6InJzYS0yIiwidHlwIjoiYXQrand0In0.eyJpc3MiOiJodHRwczovL2F1dGguZXhhbXBsZS50ZXN0Iiwic3ViIjoiRTEwMDIzIiwiYXVkIjoibWVldGluZyIsImV4cCI6MTc5MjM3NTc0MCwiaWF0IjoxNzkyMzc1MTQwLCJqdGkiOiJqdGktMDAwMSIsImF6cCI6Im1lZXRpbmciLCJjbGllbnRfdHlwZSI6IndlYiIsInBlcm1fdmVyIjo3LCJzaWQiOiJiajEuc2Vzcy0wMDAxIiwiYXNpZCI6ImFzLmFwcC0wMDAxIn0.mgrEqlqHD1G4sPk_XydETpHo_6uUQkE4rjTlbvw7AByP_7IIaNWk-oOzmC7wb_Ev4O7ytYz5xv8AaJnEtj2FsLiDq42luVF_ZxfUy48DlBR0wWm9erLVOpvJyo3-RKCOYAH466B9NrihJTTrnwNovo3OFZp84QWl_JF5MImkNoGimbTuKqZmLSOGIFKezKxTQafCH1eJAXlcPZcowSfm2qpGClDGrxtkiFdRFZ4dLE4cwHd26zFZQ4TIQvFm5zk1xje-43kpKLMwBJFyCrI2eaVh5IY6KFbHpfDIagd53EdN3nI_r-Ig-z6xgK4_T2aIjQPVWZTXWEtGr92uY8ve8A",
+      "expect": {
+        "valid": true,
+        "error": null,
+        "user": {
+          "emp_no": "E10023",
+          "subject": "E10023",
+          "is_machine": false,
+          "name": null,
+          "email": null,
+          "dept_id": null,
+          "dept_name": null,
+          "client_id": "meeting",
+          "client_type": "web",
+          "sid": "bj1.sess-0001",
+          "asid": "as.app-0001",
+          "scopes": [],
+          "perm_ver": 7,
+          "amr": [],
+          "auth_time": null,
+          "token_id": "jti-0001",
+          "expires_at": 1792375740
+        }
+      }
+    },
+    {
+      "id": "valid_es256",
+      "description": "ES256 签名",
+      "token": "eyJhbGciOiJFUzI1NiIsImtpZCI6ImVjLTEiLCJ0eXAiOiJhdCtqd3QifQ.eyJpc3MiOiJodHRwczovL2F1dGguZXhhbXBsZS50ZXN0Iiwic3ViIjoiRTEwMDIzIiwiYXVkIjoibWVldGluZyIsImV4cCI6MTc5MjM3NTc0MCwiaWF0IjoxNzkyMzc1MTQwLCJqdGkiOiJqdGktMDAwMSIsImF6cCI6Im1lZXRpbmciLCJjbGllbnRfdHlwZSI6IndlYiIsInBlcm1fdmVyIjo3LCJzaWQiOiJiajEuc2Vzcy0wMDAxIiwiYXNpZCI6ImFzLmFwcC0wMDAxIn0.gZIvCYbjDRcuCd9zfsPvPPf5oq5VhvJaJbkZSX0QTkjv4lvW3qwQJHf5tWX3Z_XH9Yj4CYTBkhkiqnV6gG_CFQ",
+      "expect": {
+        "valid": true,
+        "error": null,
+        "user": {
+          "emp_no": "E10023",
+          "subject": "E10023",
+          "is_machine": false,
+          "name": null,
+          "email": null,
+          "dept_id": null,
+          "dept_name": null,
+          "client_id": "meeting",
+          "client_type": "web",
+          "sid": "bj1.sess-0001",
+          "asid": "as.app-0001",
+          "scopes": [],
+          "perm_ver": 7,
+          "amr": [],
+          "auth_time": null,
+          "token_id": "jti-0001",
+          "expires_at": 1792375740
+        }
+      }
+    },
+    {
+      "id": "valid_kid_after_refresh",
+      "description": "kid 不在初始 JWKS，刷新一次后出现（密钥轮换）",
+      "token": "eyJhbGciOiJSUzI1NiIsImtpZCI6InJzYS0zIiwidHlwIjoiYXQrand0In0.eyJpc3MiOiJodHRwczovL2F1dGguZXhhbXBsZS50ZXN0Iiwic3ViIjoiRTEwMDIzIiwiYXVkIjoibWVldGluZyIsImV4cCI6MTc5MjM3NTc0MCwiaWF0IjoxNzkyMzc1MTQwLCJqdGkiOiJqdGktMDAwMSIsImF6cCI6Im1lZXRpbmciLCJjbGllbnRfdHlwZSI6IndlYiIsInBlcm1fdmVyIjo3LCJzaWQiOiJiajEuc2Vzcy0wMDAxIiwiYXNpZCI6ImFzLmFwcC0wMDAxIn0.R7eaRfhbZ4s4pDddlPwO9HXpgZzCbXHLYMWyb7TCeVFmtDCRxRaA6w3X5OY0uJd-EXyW1KNMsNqbLQXKrIykDU1iV6ABZhqiDWmc04yw_Wzi3zpYfwzSI1XMbhbjA5oZji9O6RELXQvoKGbe6I9sekiLRV0UXK-EyAPhmXhZK1UKJAXXk_z3wISN2WfVullKW3kcF2lCR2zWjmIXAZhdwkkApK3UORWzKkI-koh9vxnftYPoh1DB0I4YCUOgv4uO-N4bSr6aNRVAj_ro_6KiiL7Pwxe24UZT9_KYArY9mq6uEIhE_uVPM20iF52eA8GIEfYwyHS17UdKflwXDXrQRA",
+      "expect": {
+        "valid": true,
+        "error": null,
+        "user": {
+          "emp_no": "E10023",
+          "subject": "E10023",
+          "is_machine": false,
+          "name": null,
+          "email": null,
+          "dept_id": null,
+          "dept_name": null,
+          "client_id": "meeting",
+          "client_type": "web",
+          "sid": "bj1.sess-0001",
+          "asid": "as.app-0001",
+          "scopes": [],
+          "perm_ver": 7,
+          "amr": [],
+          "auth_time": null,
+          "token_id": "jti-0001",
+          "expires_at": 1792375740
+        }
+      }
+    },
+    {
+      "id": "valid_typ_application_at_jwt",
+      "description": "typ=application/at+jwt 等价于 at+jwt",
+      "token": "eyJhbGciOiJSUzI1NiIsImtpZCI6InJzYS0xIiwidHlwIjoiYXBwbGljYXRpb24vYXQrand0In0.eyJpc3MiOiJodHRwczovL2F1dGguZXhhbXBsZS50ZXN0Iiwic3ViIjoiRTEwMDIzIiwiYXVkIjoibWVldGluZyIsImV4cCI6MTc5MjM3NTc0MCwiaWF0IjoxNzkyMzc1MTQwLCJqdGkiOiJqdGktMDAwMSIsImF6cCI6Im1lZXRpbmciLCJjbGllbnRfdHlwZSI6IndlYiIsInBlcm1fdmVyIjo3LCJzaWQiOiJiajEuc2Vzcy0wMDAxIiwiYXNpZCI6ImFzLmFwcC0wMDAxIn0.mLE0WRwV3-6aeGbeMqjfTbAVu3EBFbjXHt68A8uy_fpLZ6kuZysza7JgkPtwGkECrbbagb2uMfRSuAF64UpMcc6FziAYHcdk0y9spXpvyls-w5QbDw8S3Lqf26RLHHKfojHHtwNUOaoNPX5B9MbflTXzZIT-jFhg5VbtGTR7hL9lbAgnyBYev1h-MQ0B5W_aurlo1eqksHse_F-BzsEo5xN7MtYe-HzwTGFckFP_xpxXXyr0UnajMJYPMCwaq2eviJvZerINIvJ3IE1pw0lj4nhQ9OTOTGlfhJcaQYsNKXM_2iaaOk11mU7pmMV8EEEb_S3I7yugHbcIbibW3TiRNQ",
+      "expect": {
+        "valid": true,
+        "error": null,
+        "user": {
+          "emp_no": "E10023",
+          "subject": "E10023",
+          "is_machine": false,
+          "name": null,
+          "email": null,
+          "dept_id": null,
+          "dept_name": null,
+          "client_id": "meeting",
+          "client_type": "web",
+          "sid": "bj1.sess-0001",
+          "asid": "as.app-0001",
+          "scopes": [],
+          "perm_ver": 7,
+          "amr": [],
+          "auth_time": null,
+          "token_id": "jti-0001",
+          "expires_at": 1792375740
+        }
+      }
+    },
+    {
+      "id": "valid_typ_case_insensitive",
+      "description": "typ 比较不区分大小写",
+      "token": "eyJhbGciOiJSUzI1NiIsImtpZCI6InJzYS0xIiwidHlwIjoiQVQrSldUIn0.eyJpc3MiOiJodHRwczovL2F1dGguZXhhbXBsZS50ZXN0Iiwic3ViIjoiRTEwMDIzIiwiYXVkIjoibWVldGluZyIsImV4cCI6MTc5MjM3NTc0MCwiaWF0IjoxNzkyMzc1MTQwLCJqdGkiOiJqdGktMDAwMSIsImF6cCI6Im1lZXRpbmciLCJjbGllbnRfdHlwZSI6IndlYiIsInBlcm1fdmVyIjo3LCJzaWQiOiJiajEuc2Vzcy0wMDAxIiwiYXNpZCI6ImFzLmFwcC0wMDAxIn0.L5FEJ6hmTwW7NjMyEI1WednR_gI2lcaY8juxt-PQtQ-jrPs1W2ET4RgAlSLF5XB3nv-2ScHz4ls6874iBAGU-HEbMS3E3Ieh99vnpuBlAYwGsUGKyLmmfmDhxEColdsCgh4YMr85CEqdB-ZE3WcjOkqPHBiZ9uSzYvahHE_D5558X_XlCI4JsnKSVadIumeqhDsRX6xf4Nh5kJMS7ET0J49VHUng6WHmrjONg_bInlBYYSuUaZtAtk4sqk2w6MtJ7ljZ2LsEX_0kHeahcJGN_izp2CtlyrI2I1btqTNgtnhUfGjL2x7EQBvRin_c8guITI4gbaXZdOLbEu_5sepv5Q",
+      "expect": {
+        "valid": true,
+        "error": null,
+        "user": {
+          "emp_no": "E10023",
+          "subject": "E10023",
+          "is_machine": false,
+          "name": null,
+          "email": null,
+          "dept_id": null,
+          "dept_name": null,
+          "client_id": "meeting",
+          "client_type": "web",
+          "sid": "bj1.sess-0001",
+          "asid": "as.app-0001",
+          "scopes": [],
+          "perm_ver": 7,
+          "amr": [],
+          "auth_time": null,
+          "token_id": "jti-0001",
+          "expires_at": 1792375740
+        }
+      }
+    },
+    {
+      "id": "valid_m2m",
+      "description": "m2m token：无 sid/asid，emp_no 为 null",
+      "token": "eyJhbGciOiJSUzI1NiIsImtpZCI6InJzYS0xIiwidHlwIjoiYXQrand0In0.eyJpc3MiOiJodHRwczovL2F1dGguZXhhbXBsZS50ZXN0Iiwic3ViIjoiY2xpZW50OnJlcG9ydC1qb2IiLCJhdWQiOiJtZWV0aW5nIiwiZXhwIjoxNzkyMzc1NzQwLCJpYXQiOjE3OTIzNzUxNDAsImp0aSI6Imp0aS0wMDAxIiwiYXpwIjoicmVwb3J0LWpvYiIsImNsaWVudF90eXBlIjoibTJtIiwicGVybV92ZXIiOjcsInNjb3BlIjoibWVldGluZy5yZWFkIn0.x1SCYIh1myULdlRK7qUdusuAAZC3oTaONxtX05VTzYtwSVekRkDXd6lQIPMGfFcunvohfcuKchqNsm8rDSw1T0HT914W38lhDQZt04P8ZMpI1B7EZ5FrnKxuKlgZK2hkDwPD3HCM1faZaNmv_WL8WAKyaCvcPaavOcfV55xwFViy6EXfKb24v8GXfJchQajB23QkyeGsGrMt69wzroE84zpdZmLIRbVONYTAyvjE-OuLDs05j3ItEeJ43DJjyQJ7RKottIFLOAKPABZuOEjylvNVWAk5R9pofsr4w4iBx4VIDjtNiJgLzIxooeaIbMNWJLTgFc6GT7CSPf_SdHWHWQ",
+      "expect": {
+        "valid": true,
+        "error": null,
+        "user": {
+          "emp_no": null,
+          "subject": "client:report-job",
+          "is_machine": true,
+          "name": null,
+          "email": null,
+          "dept_id": null,
+          "dept_name": null,
+          "client_id": "report-job",
+          "client_type": "m2m",
+          "sid": null,
+          "asid": null,
+          "scopes": [
+            "meeting.read"
+          ],
+          "perm_ver": 7,
+          "amr": [],
+          "auth_time": null,
+          "token_id": "jti-0001",
+          "expires_at": 1792375740
+        }
+      }
+    },
+    {
+      "id": "valid_expired_within_skew",
+      "description": "过期 30 秒，仍在 60 秒容差内",
+      "token": "eyJhbGciOiJSUzI1NiIsImtpZCI6InJzYS0xIiwidHlwIjoiYXQrand0In0.eyJpc3MiOiJodHRwczovL2F1dGguZXhhbXBsZS50ZXN0Iiwic3ViIjoiRTEwMDIzIiwiYXVkIjoibWVldGluZyIsImV4cCI6MTc5MjM3NTE3MCwiaWF0IjoxNzkyMzc1MTQwLCJqdGkiOiJqdGktMDAwMSIsImF6cCI6Im1lZXRpbmciLCJjbGllbnRfdHlwZSI6IndlYiIsInBlcm1fdmVyIjo3LCJzaWQiOiJiajEuc2Vzcy0wMDAxIiwiYXNpZCI6ImFzLmFwcC0wMDAxIn0.GEGMU7NHh3BZ-k_lH5T8VVjbrEb_1kjZ1OvJXQfp7fmUGMGAKvhK_IlmQ1Kv4ovfppGtD-C7vbDB6vbbyf29HNxcdc2lgvtCaVBtOwnHUA1_oq-Fb0G_R9f_H_lLSmBGNbsC3-1NnVfw8Ds5CJJUMDgsJVEpMDR5S6OQwoDy1SgkEDQ-ARtaQjgzFtBzIB57edeGg54uwkNiB_XEVWTVGmjVXk_Xhb4_Ec0ewYFRpRboM9YuQdwg6wgsY2QpGei6xdMQhHY0Q_OIUO8pxer_3PDRoT9BwMmNihLx2RhSwYWjxYZF6gYJ7yWa6oen-4-fYWQnG2k1EKqbvUvK49qEtA",
+      "expect": {
+        "valid": true,
+        "error": null,
+        "user": {
+          "emp_no": "E10023",
+          "subject": "E10023",
+          "is_machine": false,
+          "name": null,
+          "email": null,
+          "dept_id": null,
+          "dept_name": null,
+          "client_id": "meeting",
+          "client_type": "web",
+          "sid": "bj1.sess-0001",
+          "asid": "as.app-0001",
+          "scopes": [],
+          "perm_ver": 7,
+          "amr": [],
+          "auth_time": null,
+          "token_id": "jti-0001",
+          "expires_at": 1792375170
+        }
+      }
+    },
+    {
+      "id": "valid_nbf_within_skew",
+      "description": "nbf/iat 在未来 30 秒，仍在容差内",
+      "token": "eyJhbGciOiJSUzI1NiIsImtpZCI6InJzYS0xIiwidHlwIjoiYXQrand0In0.eyJpc3MiOiJodHRwczovL2F1dGguZXhhbXBsZS50ZXN0Iiwic3ViIjoiRTEwMDIzIiwiYXVkIjoibWVldGluZyIsImV4cCI6MTc5MjM3NTc0MCwiaWF0IjoxNzkyMzc1MjMwLCJqdGkiOiJqdGktMDAwMSIsImF6cCI6Im1lZXRpbmciLCJjbGllbnRfdHlwZSI6IndlYiIsInBlcm1fdmVyIjo3LCJzaWQiOiJiajEuc2Vzcy0wMDAxIiwiYXNpZCI6ImFzLmFwcC0wMDAxIiwibmJmIjoxNzkyMzc1MjMwfQ.c1xCYgEJSYc4WNa6798-i_BVvm3BJZuYzs1oW3JEfzwgB8wHM8UJeB1c-2fyjQ1-AC7_rVKGKVBO0d2wtjEtsJAJm0NfTdCnm33tCS6NzK6vdBMvD7ZVOmD6LbPPlDnM6oZ78uEp9jO-9XMK64tfvKL0fVlr708yTyjEdlZ4A1PbSU56CRN4UTvYb5FNsUlVJMFNrjuCt3EbYBf3jdu3a2gV8LGAZKZov8KP_bkFQRCdAEUHF8wwBE18P6HtBy_hxsF2mDnyDFmjRYGZhuCbcz5dOkcUy6BKnca31ZglpJzjKX6ayCgCeA5_HmfqjmQ4CAnM8sAVgTxc2aMQiETq8g",
+      "expect": {
+        "valid": true,
+        "error": null,
+        "user": {
+          "emp_no": "E10023",
+          "subject": "E10023",
+          "is_machine": false,
+          "name": null,
+          "email": null,
+          "dept_id": null,
+          "dept_name": null,
+          "client_id": "meeting",
+          "client_type": "web",
+          "sid": "bj1.sess-0001",
+          "asid": "as.app-0001",
+          "scopes": [],
+          "perm_ver": 7,
+          "amr": [],
+          "auth_time": null,
+          "token_id": "jti-0001",
+          "expires_at": 1792375740
+        }
+      }
+    },
+    {
+      "id": "valid_expired_exact_skew_boundary",
+      "description": "now == exp + skew 时仍有效（判定条件为 >）",
+      "token": "eyJhbGciOiJSUzI1NiIsImtpZCI6InJzYS0xIiwidHlwIjoiYXQrand0In0.eyJpc3MiOiJodHRwczovL2F1dGguZXhhbXBsZS50ZXN0Iiwic3ViIjoiRTEwMDIzIiwiYXVkIjoibWVldGluZyIsImV4cCI6MTc5MjM3NTE0MCwiaWF0IjoxNzkyMzc1MTQwLCJqdGkiOiJqdGktMDAwMSIsImF6cCI6Im1lZXRpbmciLCJjbGllbnRfdHlwZSI6IndlYiIsInBlcm1fdmVyIjo3LCJzaWQiOiJiajEuc2Vzcy0wMDAxIiwiYXNpZCI6ImFzLmFwcC0wMDAxIn0.rTPITa6UwoRXuXaLIoGlfgv4Ls87qMWodtDENsjYIJlSIngojWXWG53pc54yjRPm2koXzghZAe_S8UrKkKvb-CJgndecEWsCF-1NyjSfJAxvRvZZvQ7wPfjkleupUDLEDhFFDmlAse4pmk-THqk7i3_a4ziy7dTCu2Qyh33z0GFJJsHNi9QQhGqFrAi6Pa7VwCn5ZlixABPeAT8rQmQV8Tyl0EPKYFcOJzw9m4hYAwQzzSGbW6nHza4dT43ndLjBMI44Z5iKpJ7IQ74-wgVsQDhTkwS1whn4Dt20nrS9Hagh5eRTGIw8cKGMkuV9Z1MM-XUV-R0vbSlKTNO-GE4Y8g",
+      "expect": {
+        "valid": true,
+        "error": null,
+        "user": {
+          "emp_no": "E10023",
+          "subject": "E10023",
+          "is_machine": false,
+          "name": null,
+          "email": null,
+          "dept_id": null,
+          "dept_name": null,
+          "client_id": "meeting",
+          "client_type": "web",
+          "sid": "bj1.sess-0001",
+          "asid": "as.app-0001",
+          "scopes": [],
+          "perm_ver": 7,
+          "amr": [],
+          "auth_time": null,
+          "token_id": "jti-0001",
+          "expires_at": 1792375140
+        }
+      }
+    },
+    {
+      "id": "missing_token_null",
+      "description": "token 不存在",
+      "token": null,
+      "expect": {
+        "valid": false,
+        "error": "AUTH_TOKEN_MISSING",
+        "user": null
+      }
+    },
+    {
+      "id": "missing_token_empty",
+      "description": "token 为空字符串",
+      "token": "",
+      "expect": {
+        "valid": false,
+        "error": "AUTH_TOKEN_MISSING",
+        "user": null
+      }
+    },
+    {
+      "id": "malformed_two_segments",
+      "description": "只有两段",
+      "token": "abc.def",
+      "expect": {
+        "valid": false,
+        "error": "AUTH_TOKEN_INVALID",
+        "user": null
+      }
+    },
+    {
+      "id": "malformed_garbage",
+      "description": "非 base64url 内容",
+      "token": "!!!.@@@.###",
+      "expect": {
+        "valid": false,
+        "error": "AUTH_TOKEN_INVALID",
+        "user": null
+      }
+    },
+    {
+      "id": "malformed_header_not_json",
+      "description": "头部不是 JSON",
+      "token": "bm90LWpzb24.e30.c2ln",
+      "expect": {
+        "valid": false,
+        "error": "AUTH_TOKEN_INVALID",
+        "user": null
+      }
+    },
+    {
+      "id": "malformed_header_json_array",
+      "description": "头部是 JSON 数组而非对象",
+      "token": "WzFd.e30.c2ln",
+      "expect": {
+        "valid": false,
+        "error": "AUTH_TOKEN_INVALID",
+        "user": null
+      }
+    },
+    {
+      "id": "typ_jwt_id_token_misuse",
+      "description": "typ=JWT（ID Token 冒充 Access Token）",
+      "token": "eyJhbGciOiJSUzI1NiIsImtpZCI6InJzYS0xIiwidHlwIjoiSldUIn0.eyJpc3MiOiJodHRwczovL2F1dGguZXhhbXBsZS50ZXN0Iiwic3ViIjoiRTEwMDIzIiwiYXVkIjoibWVldGluZyIsImV4cCI6MTc5MjM3NTc0MCwiaWF0IjoxNzkyMzc1MTQwLCJqdGkiOiJqdGktMDAwMSIsImF6cCI6Im1lZXRpbmciLCJjbGllbnRfdHlwZSI6IndlYiIsInBlcm1fdmVyIjo3LCJzaWQiOiJiajEuc2Vzcy0wMDAxIiwiYXNpZCI6ImFzLmFwcC0wMDAxIn0.m6W73qHkzwYy8wmDOshn1Khe9Tgc5AztkPM4EhTjsppDbETs8UWFyoUMkt6n4VNX-6XdZxbNQSUtjRRLxph_ZpHlxzObTVuQYc2M2SYMFT05lhpr5tm-JT3nX-3KVVlKM-VEkeZEms3cHIW954qCYQmFYlSnC4ej8JrRhzlPqKPXk1RHNNVjkJT497Ljc4fems360-JWCmYFZ53KQIFTXr5IT_EEMsgKURCvtbPmfC1emkJoRRgfSWNfJtyxnTGNFReJ5Cj4RlrArHqS5znJjSCd1SNgFbzYO02fO6g-UCX3Go4TXk7suuKNY0mqDUrHE5MqyzWh2O7xw4SaBkKPDg",
+      "expect": {
+        "valid": false,
+        "error": "AUTH_TOKEN_INVALID",
+        "user": null
+      }
+    },
+    {
+      "id": "typ_missing",
+      "description": "缺少 typ 头",
+      "token": "eyJhbGciOiJSUzI1NiIsImtpZCI6InJzYS0xIn0.eyJpc3MiOiJodHRwczovL2F1dGguZXhhbXBsZS50ZXN0Iiwic3ViIjoiRTEwMDIzIiwiYXVkIjoibWVldGluZyIsImV4cCI6MTc5MjM3NTc0MCwiaWF0IjoxNzkyMzc1MTQwLCJqdGkiOiJqdGktMDAwMSIsImF6cCI6Im1lZXRpbmciLCJjbGllbnRfdHlwZSI6IndlYiIsInBlcm1fdmVyIjo3LCJzaWQiOiJiajEuc2Vzcy0wMDAxIiwiYXNpZCI6ImFzLmFwcC0wMDAxIn0.R1mNDIE1nTd8HwqtTfR5-XXbxprrWJgz_Dm8JUEHUOw6JRX9Lq0Y41-_yYTDcc6sVolMRVqyudseGchR-oLSzAf2CR0nQvo8lkqe2B6uCRpAcvVAUB1AiAq6syYJ5SJEgaIN4PD1_Nfh4-MOqweNLjhukt3VeMja_1fQagBvA_mzvrNvqINdE9YSJVbH35uGkLOHq_fY9Tx3J9TimZdY1inLi8ULxaUdJYiKMRQqjuqqj2nE9cfedneLGg1cb7_dplRvGESwRNnwKg4a5cAoRZ8oqaGep9EnLVOkXoNZkuOyLwt8fVbgjIwXznjP5nEzYqXHNG_LbpiZwuEZUKjiXA",
+      "expect": {
+        "valid": false,
+        "error": "AUTH_TOKEN_INVALID",
+        "user": null
+      }
+    },
+    {
+      "id": "alg_none",
+      "description": "alg=none 未签名 token",
+      "token": "eyJhbGciOiAibm9uZSIsICJ0eXAiOiAiYXQrand0IiwgImtpZCI6ICJyc2EtMSJ9.eyJpc3MiOiAiaHR0cHM6Ly9hdXRoLmV4YW1wbGUudGVzdCIsICJzdWIiOiAiRTEwMDIzIiwgImF1ZCI6ICJtZWV0aW5nIiwgImV4cCI6IDE3OTIzNzU3NDAsICJpYXQiOiAxNzkyMzc1MTQwLCAianRpIjogImp0aS0wMDAxIiwgImF6cCI6ICJtZWV0aW5nIiwgImNsaWVudF90eXBlIjogIndlYiIsICJwZXJtX3ZlciI6IDcsICJzaWQiOiAiYmoxLnNlc3MtMDAwMSIsICJhc2lkIjogImFzLmFwcC0wMDAxIn0.",
+      "expect": {
+        "valid": false,
+        "error": "AUTH_TOKEN_INVALID",
+        "user": null
+      }
+    },
+    {
+      "id": "alg_hs256_confusion",
+      "description": "HS256 + RSA 公钥作为 HMAC 密钥（算法混淆攻击）",
+      "token": "eyJhbGciOiAiSFMyNTYiLCAidHlwIjogImF0K2p3dCIsICJraWQiOiAicnNhLTEifQ.eyJpc3MiOiAiaHR0cHM6Ly9hdXRoLmV4YW1wbGUudGVzdCIsICJzdWIiOiAiRTEwMDIzIiwgImF1ZCI6ICJtZWV0aW5nIiwgImV4cCI6IDE3OTIzNzU3NDAsICJpYXQiOiAxNzkyMzc1MTQwLCAianRpIjogImp0aS0wMDAxIiwgImF6cCI6ICJtZWV0aW5nIiwgImNsaWVudF90eXBlIjogIndlYiIsICJwZXJtX3ZlciI6IDcsICJzaWQiOiAiYmoxLnNlc3MtMDAwMSIsICJhc2lkIjogImFzLmFwcC0wMDAxIn0.lqR0dOdn9vDWlIKQia8XjKUTumJKmTeI3c5GPnhxIN0",
+      "expect": {
+        "valid": false,
+        "error": "AUTH_TOKEN_INVALID",
+        "user": null
+      }
+    },
+    {
+      "id": "alg_rs512_not_allowed",
+      "description": "RS512 不在白名单",
+      "token": "eyJhbGciOiJSUzUxMiIsImtpZCI6InJzYS0xIiwidHlwIjoiYXQrand0In0.eyJpc3MiOiJodHRwczovL2F1dGguZXhhbXBsZS50ZXN0Iiwic3ViIjoiRTEwMDIzIiwiYXVkIjoibWVldGluZyIsImV4cCI6MTc5MjM3NTc0MCwiaWF0IjoxNzkyMzc1MTQwLCJqdGkiOiJqdGktMDAwMSIsImF6cCI6Im1lZXRpbmciLCJjbGllbnRfdHlwZSI6IndlYiIsInBlcm1fdmVyIjo3LCJzaWQiOiJiajEuc2Vzcy0wMDAxIiwiYXNpZCI6ImFzLmFwcC0wMDAxIn0.GuOs4Pk1GDYzAXC8zOW4__J01pmSFHKTm6E-nyNu0bgNUMorvInOX3BfMqNzAoTrYxsgLzZ7kklRc2ujP1N56kfqWvVbQVDqk9LVbMboVrt551cQuMNe2kaFEj7UhVlQkLxHi4X_5kUqgaZWKfOnwVEdVPbfNpI7xFe0Od2tA7hJRSDaa2MSVrngyrJ4ZneAlAcvZ7lb--lVzdstyuBW9K_V1x6ra_srD-xKLIqsCUB0zztQiDKFW7po3U-JCh02iysI--WI-B89kv_dir6o6h9QD03_kg4ZDXfnTOtlAUbLNW3KlB2EJrfpss9cEZquj9-vAq5w6NQXkEQVsBNHPQ",
+      "expect": {
+        "valid": false,
+        "error": "AUTH_TOKEN_INVALID",
+        "user": null
+      }
+    },
+    {
+      "id": "kid_missing",
+      "description": "缺少 kid 头",
+      "token": "eyJhbGciOiJSUzI1NiIsInR5cCI6ImF0K2p3dCJ9.eyJpc3MiOiJodHRwczovL2F1dGguZXhhbXBsZS50ZXN0Iiwic3ViIjoiRTEwMDIzIiwiYXVkIjoibWVldGluZyIsImV4cCI6MTc5MjM3NTc0MCwiaWF0IjoxNzkyMzc1MTQwLCJqdGkiOiJqdGktMDAwMSIsImF6cCI6Im1lZXRpbmciLCJjbGllbnRfdHlwZSI6IndlYiIsInBlcm1fdmVyIjo3LCJzaWQiOiJiajEuc2Vzcy0wMDAxIiwiYXNpZCI6ImFzLmFwcC0wMDAxIn0.eumBX17NLlvrir5pTnMRQjWRJRD-F8W0DSIl97Ycp4n6VN6AS4MOgCOMmN1F3xtwOJqI4jC3BiDBVyk12Ca6YBXyzyamJzIXziMWzLK3U_jbsN995t3adiPO-jO_V5SJro4vB553BpYjiKSO4rTmy5Y7v_ynemyWvlvkqoV_dNAUBwqWJpbPji6r1mkinRwlPZ6ET21Y9x74urV3EfJshQFYwc7HRRnMLJzK8Zq-WlkZyCXgW6OCLk1KWZLiGhZRxpiYWQW9lWYY-E3noW7G0qls4_K1RF1ukQVCZTgOWKBs1neFfga_gs1xbTmnXrCOug2oO7aSsuLOKblMSQp__Q",
+      "expect": {
+        "valid": false,
+        "error": "AUTH_TOKEN_INVALID",
+        "user": null
+      }
+    },
+    {
+      "id": "kid_unknown_after_refresh",
+      "description": "kid 在刷新后仍不存在",
+      "token": "eyJhbGciOiJSUzI1NiIsImtpZCI6InJzYS05IiwidHlwIjoiYXQrand0In0.eyJpc3MiOiJodHRwczovL2F1dGguZXhhbXBsZS50ZXN0Iiwic3ViIjoiRTEwMDIzIiwiYXVkIjoibWVldGluZyIsImV4cCI6MTc5MjM3NTc0MCwiaWF0IjoxNzkyMzc1MTQwLCJqdGkiOiJqdGktMDAwMSIsImF6cCI6Im1lZXRpbmciLCJjbGllbnRfdHlwZSI6IndlYiIsInBlcm1fdmVyIjo3LCJzaWQiOiJiajEuc2Vzcy0wMDAxIiwiYXNpZCI6ImFzLmFwcC0wMDAxIn0.NfM6fJ_SBOFEimw5CCEWaGNkr87m0xLNF0ON4rPyF-YRB_esJIO4V0hFfaZY4VWRrVhrwXs8coDulQcHkuePITLvceBFLtORi7d28UneI9Jk_YLc64LuVubCqBK6hD5kAl7qvxCb81Z4nwQv2GTEOK_eAHFpAPrpCcFlEfMXORSQwXWitqG4HY4boMNNlimjCzuXfqzu4V9eK-MzDyGhsxG2QIlJrFsygPRaLp_JdA4ETB8ZvJ2Y5aR8HTxQh2pCx17lan9-Z8ODxIdJXR0G-jxWiDLp_1BQ38_B6kzZRJoZSEMPqRZaFI2wGXRjU1RVELT0lxRzDSZirvlKfrtKGg",
+      "expect": {
+        "valid": false,
+        "error": "AUTH_TOKEN_INVALID",
+        "user": null
+      }
+    },
+    {
+      "id": "kid_alg_kty_mismatch",
+      "description": "alg=ES256 但 kid 指向 RSA 密钥",
+      "token": "eyJhbGciOiJFUzI1NiIsInR5cCI6ImF0K2p3dCIsImtpZCI6InJzYS0xIn0.eyJpc3MiOiJodHRwczovL2F1dGguZXhhbXBsZS50ZXN0Iiwic3ViIjoiRTEwMDIzIiwiYXVkIjoibWVldGluZyIsImV4cCI6MTc5MjM3NTc0MCwiaWF0IjoxNzkyMzc1MTQwLCJqdGkiOiJqdGktMDAwMSIsImF6cCI6Im1lZXRpbmciLCJjbGllbnRfdHlwZSI6IndlYiIsInBlcm1fdmVyIjo3LCJzaWQiOiJiajEuc2Vzcy0wMDAxIiwiYXNpZCI6ImFzLmFwcC0wMDAxIn0.v0w0djC_hbZeA9UeKn91pnQGzGjOwuQ8MrHSTYPPy0Tw7wjphqiN-n66dUmUHhHcY7DaKm8gz9jLopMH8mpkRA",
+      "expect": {
+        "valid": false,
+        "error": "AUTH_TOKEN_INVALID",
+        "user": null
+      }
+    },
+    {
+      "id": "signature_wrong_key",
+      "description": "攻击者密钥签名但声明 kid=rsa-1",
+      "token": "eyJhbGciOiJSUzI1NiIsImtpZCI6InJzYS0xIiwidHlwIjoiYXQrand0In0.eyJpc3MiOiJodHRwczovL2F1dGguZXhhbXBsZS50ZXN0Iiwic3ViIjoiRTEwMDIzIiwiYXVkIjoibWVldGluZyIsImV4cCI6MTc5MjM3NTc0MCwiaWF0IjoxNzkyMzc1MTQwLCJqdGkiOiJqdGktMDAwMSIsImF6cCI6Im1lZXRpbmciLCJjbGllbnRfdHlwZSI6IndlYiIsInBlcm1fdmVyIjo3LCJzaWQiOiJiajEuc2Vzcy0wMDAxIiwiYXNpZCI6ImFzLmFwcC0wMDAxIn0.iKYvOeyIFMRXabNO1BTOr-p5O188SYJhAa4AbECa5IBaKkmG5XhJoxnbAQAtOWvIkFzRI2J69wrdXAeOlNXM2dB3uGVYhsys2fRbXJOADVNSFTDew_KT03ph2jYFJOvB0UhMcEu2QodD4Uj4TJUQW4bDYzpEzatMcNBU_DpODl09wtREjSNkgP7dyd0iqBlLIrj17ic6gIv1qR6yU5uZj5DSjpRVv6Oadg-sPjMH4HYRgTPsbm9-irwzPyy0wfugX2-56eNF3oojM8WZrEwefZBfx59vQEovoRsSv_0k_TqWYlcueyxRyGlVsch69t86OXUHAD-nap6QupNPDK98EA",
+      "expect": {
+        "valid": false,
+        "error": "AUTH_TOKEN_INVALID",
+        "user": null
+      }
+    },
+    {
+      "id": "signature_payload_tampered",
+      "description": "篡改 payload（sub）后签名不匹配",
+      "token": "eyJhbGciOiJSUzI1NiIsImtpZCI6InJzYS0xIiwidHlwIjoiYXQrand0In0.eyJpc3MiOiAiaHR0cHM6Ly9hdXRoLmV4YW1wbGUudGVzdCIsICJzdWIiOiAiRTk5OTk5IiwgImF1ZCI6ICJtZWV0aW5nIiwgImV4cCI6IDE3OTIzNzU3NDAsICJpYXQiOiAxNzkyMzc1MTQwLCAianRpIjogImp0aS0wMDAxIiwgImF6cCI6ICJtZWV0aW5nIiwgImNsaWVudF90eXBlIjogIndlYiIsICJwZXJtX3ZlciI6IDcsICJzaWQiOiAiYmoxLnNlc3MtMDAwMSIsICJhc2lkIjogImFzLmFwcC0wMDAxIn0.ocXfmd7TkOqSKYSoRCUChxXOwMZR7_1o70Fh1fQY6DNp5-8VLpAIhIgDqZddFNV19vXfMW_y-OvTfEemXMT_s31al8Uw62_y4Uz9u243ZwVVVyPYEufzWuOD606I2W6X2tsT5z2_D1LXTz4amswI0U_IGuPaIPaxiAN9oFawAIFeqvC4CTfyrJQzsybL1mGMXusSJ5hAYlCpsd4S6UY85n8CH2tNx4EnfNEtoSYB919kP9GkiY3hq8uqj3ey87iNC9_gsZes3OA5bymKzu8_q1HFfP1mpGDrGRYnub_BhQ0lACagk2-G0FFtiplRibTBgSmAyJoANSILLalewJ8z1A",
+      "expect": {
+        "valid": false,
+        "error": "AUTH_TOKEN_INVALID",
+        "user": null
+      }
+    },
+    {
+      "id": "claim_missing_sub",
+      "description": "缺少必填 claim sub",
+      "token": "eyJhbGciOiJSUzI1NiIsImtpZCI6InJzYS0xIiwidHlwIjoiYXQrand0In0.eyJpc3MiOiJodHRwczovL2F1dGguZXhhbXBsZS50ZXN0IiwiYXVkIjoibWVldGluZyIsImV4cCI6MTc5MjM3NTc0MCwiaWF0IjoxNzkyMzc1MTQwLCJqdGkiOiJqdGktMDAwMSIsImF6cCI6Im1lZXRpbmciLCJjbGllbnRfdHlwZSI6IndlYiIsInBlcm1fdmVyIjo3LCJzaWQiOiJiajEuc2Vzcy0wMDAxIiwiYXNpZCI6ImFzLmFwcC0wMDAxIn0.X_42q4S_gJKn2Ru7uakxKtabH6kUyTwf0eNadZEC4trAXBNmq8YYsMsxani9tvACR3MpsAdu9_kW6cNI9VPbgg0KtitGljCzzSuIbzHYF5KmURIxaELb7fr3e6cSezEcS8UEmq3i_gnvjmzpFGCTbbqRfuhMclJm5YkJCvrNsgrEyG9pigQWQFUwHozOmEZhABuAvmaK3Sz8smbr0juaLwmfHkQ68_1tnlCB2jOW5qEdHm-uA-yGV4bRImwwDRspWoDQNuhv6wA9dsVXowV2CvoM1ysIpTdbV1cY7WqDR7y8nh0-1yUjwJA9KStzSzhq-ExcCe3R8quCi0oJJ-8fxQ",
+      "expect": {
+        "valid": false,
+        "error": "AUTH_TOKEN_INVALID",
+        "user": null
+      }
+    },
+    {
+      "id": "claim_missing_jti",
+      "description": "缺少必填 claim jti",
+      "token": "eyJhbGciOiJSUzI1NiIsImtpZCI6InJzYS0xIiwidHlwIjoiYXQrand0In0.eyJpc3MiOiJodHRwczovL2F1dGguZXhhbXBsZS50ZXN0Iiwic3ViIjoiRTEwMDIzIiwiYXVkIjoibWVldGluZyIsImV4cCI6MTc5MjM3NTc0MCwiaWF0IjoxNzkyMzc1MTQwLCJhenAiOiJtZWV0aW5nIiwiY2xpZW50X3R5cGUiOiJ3ZWIiLCJwZXJtX3ZlciI6Nywic2lkIjoiYmoxLnNlc3MtMDAwMSIsImFzaWQiOiJhcy5hcHAtMDAwMSJ9.ap4DUkJGrZH8VmxOKI-qbqchBFM_RWI49M4c3CraDRpVUeeJORtfnLGXOWNOa0VDE3UXF_blD-ivyH3zB-LLQhGigIqfe-nRJB2mgAo8DahggoM517mWx-bevjPQp-G9C5Bxk9EiG3hmoCbMDHxBde3xGb1vn2L5i_cPaehCKXHWEThBG-LvuMWXYTrt6tpvcImiysSk7nhegQffwlWxHG4X_d6udJ3R9SUPe_kKZbARU6ILZbrXWhd7mmQGse86a5iMIgFmHYmXdCIvl6ftdaIAWQb55voccnOD339m4uIXx8ltYkAsnnRox_pXrIalRhdHF1l21DKxtiYdyMkdNA",
+      "expect": {
+        "valid": false,
+        "error": "AUTH_TOKEN_INVALID",
+        "user": null
+      }
+    },
+    {
+      "id": "claim_missing_azp",
+      "description": "缺少必填 claim azp",
+      "token": "eyJhbGciOiJSUzI1NiIsImtpZCI6InJzYS0xIiwidHlwIjoiYXQrand0In0.eyJpc3MiOiJodHRwczovL2F1dGguZXhhbXBsZS50ZXN0Iiwic3ViIjoiRTEwMDIzIiwiYXVkIjoibWVldGluZyIsImV4cCI6MTc5MjM3NTc0MCwiaWF0IjoxNzkyMzc1MTQwLCJqdGkiOiJqdGktMDAwMSIsImNsaWVudF90eXBlIjoid2ViIiwicGVybV92ZXIiOjcsInNpZCI6ImJqMS5zZXNzLTAwMDEiLCJhc2lkIjoiYXMuYXBwLTAwMDEifQ.KVoEdKQBd3vHpgTE1AZdhL9sEFUXAsXOKwsDW82qNbWtQdmU-T_FuDsxd4NkSZmyME_vACxc6GvOAzb745lXadAshnlS4uuj5VaYPpdMJUQUhsLzvxtwzah3q4dqLwtdznhndQ3sBm5fDwlfAvelPtUOwxpLwlByJ4wyrIFkjvFzizQPWr1KtejaLI-ALvBBS-e0H8rU1ioshwZUawoWm1NlKDKoNl6iVbkE6B2yxvc9PGMyvdhzqr0zTzFrbXNh2h11JqoeSx1Cfg88BI0lKuFuUe3j-XlS9r0cJsfTSSeOt8nMC3cCT1nn0nSbz4BaiF0kTqJtCLnc5Jt5TZHktQ",
+      "expect": {
+        "valid": false,
+        "error": "AUTH_TOKEN_INVALID",
+        "user": null
+      }
+    },
+    {
+      "id": "claim_missing_client_type",
+      "description": "缺少必填 claim client_type",
+      "token": "eyJhbGciOiJSUzI1NiIsImtpZCI6InJzYS0xIiwidHlwIjoiYXQrand0In0.eyJpc3MiOiJodHRwczovL2F1dGguZXhhbXBsZS50ZXN0Iiwic3ViIjoiRTEwMDIzIiwiYXVkIjoibWVldGluZyIsImV4cCI6MTc5MjM3NTc0MCwiaWF0IjoxNzkyMzc1MTQwLCJqdGkiOiJqdGktMDAwMSIsImF6cCI6Im1lZXRpbmciLCJwZXJtX3ZlciI6Nywic2lkIjoiYmoxLnNlc3MtMDAwMSIsImFzaWQiOiJhcy5hcHAtMDAwMSJ9.VIO3LwLttawemLv4MP8YYQpfsVitLi6YPyEGPGMdRdA_yCluXnyYEJEatRmOk0XmLvXiYWK-LvjZx4C-TWVEmyiGV4sP-kPSBZkM47M4zmUnUQzF6jWRwke2Dtg_vKaGEBOAIgzYjVkuLyrXYAgOOmfWFbRezyQHkO2HjQ-poQgfYGd7kQHZJI2EjIsOp7CfhgXFYABUigpGZvsjWCd2U2F-VjvEv8Ui1BG908CYbGMLwbMRx0-z6iiEOISxXaOAuBgr_ehI4cFQ4pXBTu_Z9u6DGUUDD7ol8rF23o_iprU99yFiG6CqXFQ6IG_CdyhwBf0hHo_IVFFdnNO4mD2ikA",
+      "expect": {
+        "valid": false,
+        "error": "AUTH_TOKEN_INVALID",
+        "user": null
+      }
+    },
+    {
+      "id": "claim_missing_perm_ver",
+      "description": "缺少必填 claim perm_ver",
+      "token": "eyJhbGciOiJSUzI1NiIsImtpZCI6InJzYS0xIiwidHlwIjoiYXQrand0In0.eyJpc3MiOiJodHRwczovL2F1dGguZXhhbXBsZS50ZXN0Iiwic3ViIjoiRTEwMDIzIiwiYXVkIjoibWVldGluZyIsImV4cCI6MTc5MjM3NTc0MCwiaWF0IjoxNzkyMzc1MTQwLCJqdGkiOiJqdGktMDAwMSIsImF6cCI6Im1lZXRpbmciLCJjbGllbnRfdHlwZSI6IndlYiIsInNpZCI6ImJqMS5zZXNzLTAwMDEiLCJhc2lkIjoiYXMuYXBwLTAwMDEifQ.OYAeI2frarev4bJjXbEmPy1V_qhBqjpRbp44SllKxQk2-IvQy36GgZz-AyXNBa6pCnl6gEjjQHv2tYVXC6AblsdKG9v3a5XO0e6_VdXd3Y5jvJx8fzLUgaGk7bFjN34UVE7KsaD2r1ZOkn5_J9-p1HJfM6fHDpqOVcCE4qJbJT87C2P9IDB36b9iiON6x410q9pBJ3V8EppsoXvTPRoc-LYhU1tvJwk8qFxDI6kzQZHbJxJl39E8WeUxPxnbm_4eMZ640CnnoyTehrpllZqVFzqDbkh7xI6wbW7cR1lBFMOz2i08zh5ZX_SXVYKcxcrx8Myh9hDeGkUdmP-tMMBVHg",
+      "expect": {
+        "valid": false,
+        "error": "AUTH_TOKEN_INVALID",
+        "user": null
+      }
+    },
+    {
+      "id": "claim_missing_sid",
+      "description": "缺少必填 claim sid",
+      "token": "eyJhbGciOiJSUzI1NiIsImtpZCI6InJzYS0xIiwidHlwIjoiYXQrand0In0.eyJpc3MiOiJodHRwczovL2F1dGguZXhhbXBsZS50ZXN0Iiwic3ViIjoiRTEwMDIzIiwiYXVkIjoibWVldGluZyIsImV4cCI6MTc5MjM3NTc0MCwiaWF0IjoxNzkyMzc1MTQwLCJqdGkiOiJqdGktMDAwMSIsImF6cCI6Im1lZXRpbmciLCJjbGllbnRfdHlwZSI6IndlYiIsInBlcm1fdmVyIjo3LCJhc2lkIjoiYXMuYXBwLTAwMDEifQ.UBD1DvIReQ-esTTrkUuQk7g-rsT025slfrf6xXRCNDRk-BvKkeeU1IY_k9d54kdBTch5h1xBzmMh4uSNiSgtRUzcR3H09G8JM_O6oEjzj7_Ori3qfdUi1LU-Iz3GuolKzgRsT0bortM8RNy0uNY11mhB3dT-CYgP9JlJa0YR45iATSLHWDwupR7LGNY2Qp3oqPJY3L00PHlYRKx6r4NpExDXzFcIKOahV8T4bkszzGovr0JTRxK92UekiEhmyK0PJOcV0csFc6kmLUNb-2sIxrmrB2LAREZhqCKUCCnOh3XexjwBp2dAyCEIc-xEXQADb1Y-fSmozEI9erxLW2UuRA",
+      "expect": {
+        "valid": false,
+        "error": "AUTH_TOKEN_INVALID",
+        "user": null
+      }
+    },
+    {
+      "id": "claim_missing_asid",
+      "description": "缺少必填 claim asid",
+      "token": "eyJhbGciOiJSUzI1NiIsImtpZCI6InJzYS0xIiwidHlwIjoiYXQrand0In0.eyJpc3MiOiJodHRwczovL2F1dGguZXhhbXBsZS50ZXN0Iiwic3ViIjoiRTEwMDIzIiwiYXVkIjoibWVldGluZyIsImV4cCI6MTc5MjM3NTc0MCwiaWF0IjoxNzkyMzc1MTQwLCJqdGkiOiJqdGktMDAwMSIsImF6cCI6Im1lZXRpbmciLCJjbGllbnRfdHlwZSI6IndlYiIsInBlcm1fdmVyIjo3LCJzaWQiOiJiajEuc2Vzcy0wMDAxIn0.K9XHB9Syu8T1Syx9D36L9307LEG3g3w7kw5K1cVDhMtjzqHCoF9A9u9ejWlLAwkqUpVVEBdCpGtyElasQY1LWzbnkYcww2z2EHeZeCmPMyugnhAIAC4fOMc-DIoYH4DEh_ulxpomjsw5e5RXD8fEikH_a899k8vjMfMneqCI1OGSYV9LbdGqis7Njqc3z3bjYPo-raUNIBTejDBET3L024Luj6c7myv6e9Tm7bIDGpO6t2to9TN6Kx2GFUA4Xiwcqlh-iS3CBjyE9FOxgpMMg0_I7axUSDnJXgc1E8DcwXi8Ucjn-NKwQ-BHkgiFTIfs9yFIJT5TTVfldBNTqZ5NmQ",
+      "expect": {
+        "valid": false,
+        "error": "AUTH_TOKEN_INVALID",
+        "user": null
+      }
+    },
+    {
+      "id": "claim_missing_exp",
+      "description": "缺少必填 claim exp",
+      "token": "eyJhbGciOiJSUzI1NiIsImtpZCI6InJzYS0xIiwidHlwIjoiYXQrand0In0.eyJpc3MiOiJodHRwczovL2F1dGguZXhhbXBsZS50ZXN0Iiwic3ViIjoiRTEwMDIzIiwiYXVkIjoibWVldGluZyIsImlhdCI6MTc5MjM3NTE0MCwianRpIjoianRpLTAwMDEiLCJhenAiOiJtZWV0aW5nIiwiY2xpZW50X3R5cGUiOiJ3ZWIiLCJwZXJtX3ZlciI6Nywic2lkIjoiYmoxLnNlc3MtMDAwMSIsImFzaWQiOiJhcy5hcHAtMDAwMSJ9.Y4Lal3BSVxyVert1bcWguLy78syWFiRexu_EkTOqtHrkk8LcA2og32QKoIG7EUNo0cvWhsIIrl05siUChwe0CIeUlB5SDAUZAIZowEVX1V8EtEMPTqzVJUwguZb8xoBJwcbxmsSxJu5uqC88xm3aCS3MJ5odnkzYCv9HTt3CNAhDKfKztKE0o1v3seztT6f3dKn0K-lmtgb99pbYY5Geoctq8dbkXoXx3XxFzkY7305Mjcr6nlEv03MBrNec5mfIX5GSRUg_q5C6WwAlul4rXM6S9LTMqis4UeQOihH-j1gy8e00WoBDQOhzCR6_CXMNZYC3vLKiEk4USv0cAPbzFw",
+      "expect": {
+        "valid": false,
+        "error": "AUTH_TOKEN_INVALID",
+        "user": null
+      }
+    },
+    {
+      "id": "claim_missing_iat",
+      "description": "缺少必填 claim iat",
+      "token": "eyJhbGciOiJSUzI1NiIsImtpZCI6InJzYS0xIiwidHlwIjoiYXQrand0In0.eyJpc3MiOiJodHRwczovL2F1dGguZXhhbXBsZS50ZXN0Iiwic3ViIjoiRTEwMDIzIiwiYXVkIjoibWVldGluZyIsImV4cCI6MTc5MjM3NTc0MCwianRpIjoianRpLTAwMDEiLCJhenAiOiJtZWV0aW5nIiwiY2xpZW50X3R5cGUiOiJ3ZWIiLCJwZXJtX3ZlciI6Nywic2lkIjoiYmoxLnNlc3MtMDAwMSIsImFzaWQiOiJhcy5hcHAtMDAwMSJ9.2WM6bB0Ts6sOqDnEzBt9oeFLPjPivn_GIGUUr5nr_azjpDv2UrCaOWIgR3Q2HEW5eA29afrUfdHunJgCgSMETFJ220eDn-AQ0V3L5YVXvAp_9OckgaX7-zEW77hDQAUOoWcmbS_er9Pcmji_MUzKqA63YzrCfeZ4QGGi10ZIrc5IzzkHulemARlGnLt7sf8IPmOlTb2NS6cAcmWFNteEcMCmuFqJgMMVbtTGIKEsSSI1ywN2ZXc8mqeJepPcEIUc3o7S4NVKe6fylnGESjF4Ro25xv-PcPvrFJwUabH7KRxC1RXFCCvStzu9IfuTLDllFNPG8wGtkR7ym23wOUFUMA",
+      "expect": {
+        "valid": false,
+        "error": "AUTH_TOKEN_INVALID",
+        "user": null
+      }
+    },
+    {
+      "id": "claim_missing_aud",
+      "description": "缺少必填 claim aud",
+      "token": "eyJhbGciOiJSUzI1NiIsImtpZCI6InJzYS0xIiwidHlwIjoiYXQrand0In0.eyJpc3MiOiJodHRwczovL2F1dGguZXhhbXBsZS50ZXN0Iiwic3ViIjoiRTEwMDIzIiwiZXhwIjoxNzkyMzc1NzQwLCJpYXQiOjE3OTIzNzUxNDAsImp0aSI6Imp0aS0wMDAxIiwiYXpwIjoibWVldGluZyIsImNsaWVudF90eXBlIjoid2ViIiwicGVybV92ZXIiOjcsInNpZCI6ImJqMS5zZXNzLTAwMDEiLCJhc2lkIjoiYXMuYXBwLTAwMDEifQ.ZvFbAu6t-ASKQHJKgZgIpNPjmxH2BhPcQBz8QWA-tVkcxXaeEFTPui2Ycphuli0Ba9eXjA2xdzl6EAOvPlnSd-fW88LaLHmuEvyL77IZnH9gCvaxvMgwF5ma-nJys3cDbzRVKlpvr89VMVQyhV1IXMXOGdgafyQZsLZDT7ZGzMvT0Y7FCgp1q1oFKii_9Dt80OMZMwz0sBPDJXgVxKYBt-qJKWbvqaatC8OWXS50D3P5XmoBT8MIOv5UCXaSrc5JYltTDOb0V57YvCMrHBfpd8BAkUt_01aET1cyfkztTOGbe-rRRNROZZFrdpuDjLBqG2wk0DURZZvQyIITKziWSA",
+      "expect": {
+        "valid": false,
+        "error": "AUTH_TOKEN_INVALID",
+        "user": null
+      }
+    },
+    {
+      "id": "claim_missing_iss",
+      "description": "缺少必填 claim iss",
+      "token": "eyJhbGciOiJSUzI1NiIsImtpZCI6InJzYS0xIiwidHlwIjoiYXQrand0In0.eyJzdWIiOiJFMTAwMjMiLCJhdWQiOiJtZWV0aW5nIiwiZXhwIjoxNzkyMzc1NzQwLCJpYXQiOjE3OTIzNzUxNDAsImp0aSI6Imp0aS0wMDAxIiwiYXpwIjoibWVldGluZyIsImNsaWVudF90eXBlIjoid2ViIiwicGVybV92ZXIiOjcsInNpZCI6ImJqMS5zZXNzLTAwMDEiLCJhc2lkIjoiYXMuYXBwLTAwMDEifQ.kdCm5is7ll7xvg28yMNgOGPHN26So18ztAc_lw2IfGvS60V6J3ldvKWy41ctnXYNGZRuyP0GMv4oGRB89aiUneUIbPYMV3VtEIybNaDPaNaaaH_Ay3Q-b0fdGe134MWfOJFxURabizmqbXFk7XNysNBWhUIVaiBTI5F9N9uAtlLaS1J6dusCACm4QWZ2nLUKqAR0oYCcGwu7bDU8HcXVicgzpdZhFU1T5De4pUCXeNTRn3sUBg3F33-t-b3p0gcPHW5SivqAxBsNj_MBfuvSTWgu6BplknGRjY6uyCIngyE9Nxo8hvVYIRigjhYgsDa6yDe_e1BpoIaDBUUlrZFVkA",
+      "expect": {
+        "valid": false,
+        "error": "AUTH_TOKEN_INVALID",
+        "user": null
+      }
+    },
+    {
+      "id": "claim_empty_sub",
+      "description": "sub 为空字符串",
+      "token": "eyJhbGciOiJSUzI1NiIsImtpZCI6InJzYS0xIiwidHlwIjoiYXQrand0In0.eyJpc3MiOiJodHRwczovL2F1dGguZXhhbXBsZS50ZXN0Iiwic3ViIjoiIiwiYXVkIjoibWVldGluZyIsImV4cCI6MTc5MjM3NTc0MCwiaWF0IjoxNzkyMzc1MTQwLCJqdGkiOiJqdGktMDAwMSIsImF6cCI6Im1lZXRpbmciLCJjbGllbnRfdHlwZSI6IndlYiIsInBlcm1fdmVyIjo3LCJzaWQiOiJiajEuc2Vzcy0wMDAxIiwiYXNpZCI6ImFzLmFwcC0wMDAxIn0.F7Wui8pKsAmPkmF1JDOymbUHzVDnuX7JLmJ234q2sPWvgJXq9_ZY39VWPRKJqK1X86B8Nt_RbYd3NENnPn_g04CoTexCPm9lVGGHB3cdDbEsqezLlAu8bo5QZmF-goTArpsQPiYBebbeemFPW8KeSkdvPl6D1yS7nqbYxOr79IqirI6xNWkAr7h5Y9GI2X-rdVAdxd8vz-mg-jIDh2RwDHoOiwxZ2CYPu-jovX8rzF0Qg7Xr_JcNBBAuQz14l2jHBs6kYBu1F7WG4puSeiwBygN6bWaG-V7SgMVOOkH7y3HNUyXTElctVTwWOf3mdp3aFYnq1n0Sn-ug7d5J-tKPMg",
+      "expect": {
+        "valid": false,
+        "error": "AUTH_TOKEN_INVALID",
+        "user": null
+      }
+    },
+    {
+      "id": "claim_exp_wrong_type",
+      "description": "exp 为字符串",
+      "token": "eyJhbGciOiJSUzI1NiIsImtpZCI6InJzYS0xIiwidHlwIjoiYXQrand0In0.eyJpc3MiOiJodHRwczovL2F1dGguZXhhbXBsZS50ZXN0Iiwic3ViIjoiRTEwMDIzIiwiYXVkIjoibWVldGluZyIsImV4cCI6IjE3OTIzNzU4MDAiLCJpYXQiOjE3OTIzNzUxNDAsImp0aSI6Imp0aS0wMDAxIiwiYXpwIjoibWVldGluZyIsImNsaWVudF90eXBlIjoid2ViIiwicGVybV92ZXIiOjcsInNpZCI6ImJqMS5zZXNzLTAwMDEiLCJhc2lkIjoiYXMuYXBwLTAwMDEifQ.GXe2OLcSKPRvtaNUqlkMnH8aIGCJJQAHBZonf66jWRhFxvuJdHgRPDfvklvjLTA7KdApC9LjcKwFc7ljWCuj5TX9HyfpGVh079BLI9BDAVtgSCqBHYD3p6Hh5dcsfbZdPMbdSARqUWGChRMGdBH_3UR_bIH5dXMMI9IFXmFVbLnLs06qT5KjC6f3RUxo__m0mbdT3aiaRDJ5j54STbZCY1xI5mnYOM_GBJx3FqY6elFv2yX3Y6w3VgcG4gGiefDV3mblHUXhWwjdJg6pG0iHqSvDmAPmOxYgUEyjrVeoBXmRTZssq3N3yuXomJNJfUijZzwbbClxMRH08AI2Q50nfg",
+      "expect": {
+        "valid": false,
+        "error": "AUTH_TOKEN_INVALID",
+        "user": null
+      }
+    },
+    {
+      "id": "claim_perm_ver_negative",
+      "description": "perm_ver 为负数",
+      "token": "eyJhbGciOiJSUzI1NiIsImtpZCI6InJzYS0xIiwidHlwIjoiYXQrand0In0.eyJpc3MiOiJodHRwczovL2F1dGguZXhhbXBsZS50ZXN0Iiwic3ViIjoiRTEwMDIzIiwiYXVkIjoibWVldGluZyIsImV4cCI6MTc5MjM3NTc0MCwiaWF0IjoxNzkyMzc1MTQwLCJqdGkiOiJqdGktMDAwMSIsImF6cCI6Im1lZXRpbmciLCJjbGllbnRfdHlwZSI6IndlYiIsInBlcm1fdmVyIjotMSwic2lkIjoiYmoxLnNlc3MtMDAwMSIsImFzaWQiOiJhcy5hcHAtMDAwMSJ9.sTJzwmOKz4Z_qYx2AbweXh-p4aimYwcdxcJ8W3QI6hg6AqvGB9d3my8edeCfN6Ym5JDP4ynQrrRAXKf3Du8lhaIvR_2ou1EAbM7Sc2AIygkntAbTCzEXK1M_C3ncbGjPO7l1RwXeDFey6XP5Ym_nDyIxS8TmcRXNxDfwhI6tL4GwRjWjKCPwOAYvNMjITNRBuCfKiTFPEL0-DUui4ly98jqF7DnHAOzGNWzTVn_NBoLnigIsvHd1y692Iy3xcU_lQSTq2CM56wLlH-YKt0-l-_OtFWRgv1bf4_o4J8-glx5B5kQAEW3ie_EmzG53xfZ5SxllCNR3vKmOi3vXDDPcvA",
+      "expect": {
+        "valid": false,
+        "error": "AUTH_TOKEN_INVALID",
+        "user": null
+      }
+    },
+    {
+      "id": "claim_client_type_unknown",
+      "description": "client_type 不在枚举内",
+      "token": "eyJhbGciOiJSUzI1NiIsImtpZCI6InJzYS0xIiwidHlwIjoiYXQrand0In0.eyJpc3MiOiJodHRwczovL2F1dGguZXhhbXBsZS50ZXN0Iiwic3ViIjoiRTEwMDIzIiwiYXVkIjoibWVldGluZyIsImV4cCI6MTc5MjM3NTc0MCwiaWF0IjoxNzkyMzc1MTQwLCJqdGkiOiJqdGktMDAwMSIsImF6cCI6Im1lZXRpbmciLCJjbGllbnRfdHlwZSI6ImRlc2t0b3AiLCJwZXJtX3ZlciI6Nywic2lkIjoiYmoxLnNlc3MtMDAwMSIsImFzaWQiOiJhcy5hcHAtMDAwMSJ9.KSHt_e1pcmQNTkX9hp78HWRb_W8Tfzk_gc0ktUfVFsGxNEd3EIEtf2J0Ud1eBGTxOjIBSH_68Hsr99njoBoZcii5i_2Vy8Ml1BsmxAvGLO39za6JyTYLGpjVtA1Itbrrrgq5WpxdCthVYBUh0eQGaj7Ct3tS-2Kg6C841cuk7JzO7PxBqzPQQOyWy0rp30fSlvqw70Jk05XpSmSIt83Df6g3dsW19Tbt037LSnFHRFIEdpPl4-a5zTQeQj58VXbZ8zC5avAZFD_n-tthC79miOdTKNnwEym_IAbL5ZHy5nmImIqeKyAVNVQUBMpEeH3vnzghUyByQVdB4GOet5iqjA",
+      "expect": {
+        "valid": false,
+        "error": "AUTH_TOKEN_INVALID",
+        "user": null
+      }
+    },
+    {
+      "id": "claim_optional_wrong_type",
+      "description": "可选 claim name 类型错误",
+      "token": "eyJhbGciOiJSUzI1NiIsImtpZCI6InJzYS0xIiwidHlwIjoiYXQrand0In0.eyJpc3MiOiJodHRwczovL2F1dGguZXhhbXBsZS50ZXN0Iiwic3ViIjoiRTEwMDIzIiwiYXVkIjoibWVldGluZyIsImV4cCI6MTc5MjM3NTc0MCwiaWF0IjoxNzkyMzc1MTQwLCJqdGkiOiJqdGktMDAwMSIsImF6cCI6Im1lZXRpbmciLCJjbGllbnRfdHlwZSI6IndlYiIsInBlcm1fdmVyIjo3LCJzaWQiOiJiajEuc2Vzcy0wMDAxIiwiYXNpZCI6ImFzLmFwcC0wMDAxIiwibmFtZSI6MTIzfQ.E-SRfeqwqPI3aeA9ohpH11NqazrJxsRHwOzQtLtBnEbZx9ZrED0a5GSkr062YGBdzc9qPrfqhN84dSBOv0OTQGcWk2UckrNVsptDkxNDkbakxw0EG0nhIA1c7hYPAm4mJ7VjJmur-Wm7OoKxDTdh6pybzSOIgooJkgpkhcBhvnW42BCRh6oSFuUPOk9VX1LFyVHfBIB8-hssaK06gj_G0eILbOT00H5JGmibR3KQcFX-YM9DHqU0MECMo8SyKqouUR1OVxFrO31bGvz0UG0ycPoNzuOAmOO4eTsmjfpJ8kf0UgOwJny1VOuiiYy79SyBSqHaEG-gbrhh6IHYr01Cuw",
+      "expect": {
+        "valid": false,
+        "error": "AUTH_TOKEN_INVALID",
+        "user": null
+      }
+    },
+    {
+      "id": "claim_aud_empty_array",
+      "description": "aud 为空数组",
+      "token": "eyJhbGciOiJSUzI1NiIsImtpZCI6InJzYS0xIiwidHlwIjoiYXQrand0In0.eyJpc3MiOiJodHRwczovL2F1dGguZXhhbXBsZS50ZXN0Iiwic3ViIjoiRTEwMDIzIiwiYXVkIjpbXSwiZXhwIjoxNzkyMzc1NzQwLCJpYXQiOjE3OTIzNzUxNDAsImp0aSI6Imp0aS0wMDAxIiwiYXpwIjoibWVldGluZyIsImNsaWVudF90eXBlIjoid2ViIiwicGVybV92ZXIiOjcsInNpZCI6ImJqMS5zZXNzLTAwMDEiLCJhc2lkIjoiYXMuYXBwLTAwMDEifQ.QrSPHkMULqnuHxrwLuS7nMFX1mGmZ7U1Zdz3sbaX-b9muTBN21H5bENTf-ktjBs8QytBVAdxgmd1i11-vbR7B2PLYnQU5RCMhZp1uiIOkGxGnLuF2f3IWi92kC4SKiyYY4Y-PxV7RV3Rv0c5KIB6G6RjETWA6ZirxkvUTwswSxdT2UqjN7ApfFkRHKnHqFlix8KB7j4szmZZRDMRsTG0DcKph8fEbi_i6BJyC9mS-0dW6odSm6cORMTwtPhCKniAkwg15Q2rqp-wt9iLRtY_ktR9emW3ujL1fqdcGHUew62dqAiUeIZ5O-zkeJcOIa9sc6EyTQPxov0VNia0_oEMKg",
+      "expect": {
+        "valid": false,
+        "error": "AUTH_TOKEN_INVALID",
+        "user": null
+      }
+    },
+    {
+      "id": "iss_trailing_slash",
+      "description": "iss 多一个尾部斜杠（不做归一化）",
+      "token": "eyJhbGciOiJSUzI1NiIsImtpZCI6InJzYS0xIiwidHlwIjoiYXQrand0In0.eyJpc3MiOiJodHRwczovL2F1dGguZXhhbXBsZS50ZXN0LyIsInN1YiI6IkUxMDAyMyIsImF1ZCI6Im1lZXRpbmciLCJleHAiOjE3OTIzNzU3NDAsImlhdCI6MTc5MjM3NTE0MCwianRpIjoianRpLTAwMDEiLCJhenAiOiJtZWV0aW5nIiwiY2xpZW50X3R5cGUiOiJ3ZWIiLCJwZXJtX3ZlciI6Nywic2lkIjoiYmoxLnNlc3MtMDAwMSIsImFzaWQiOiJhcy5hcHAtMDAwMSJ9.B1BAx7rE4IFjWZIokk4I2V-w387fY1_-5E3APPI4_6OvVgao1DiAQ28Ahjv226PbptenAKOYHG4KCH6GUUUC-T1xlU-BRO7KqZY4KTuBLbTUQEzjhSAMpZeenjBjJncuPcfa4q761W0nZI_d9X4fBZpNOpnvGCasCVdG3W39rMXelyE8KNcbsFFdjl1snKgkX2aC6A4TTZVstNzgl_2HfhFBIMqFwMsrJtesuXmtDAAjGuwaR85ppRhp3Uc18SJoP2Fz2ugj7wnBK4v0VMrUnCwuvbWp0Akk9jZBIZP4DR2R2QpCqx7hDww6tjmx8--hMdKRxm5mSlM0wd2pWmZAqw",
+      "expect": {
+        "valid": false,
+        "error": "AUTH_TOKEN_INVALID",
+        "user": null
+      }
+    },
+    {
+      "id": "iss_other",
+      "description": "iss 为其他签发方",
+      "token": "eyJhbGciOiJSUzI1NiIsImtpZCI6InJzYS0xIiwidHlwIjoiYXQrand0In0.eyJpc3MiOiJodHRwczovL2V2aWwuZXhhbXBsZS50ZXN0Iiwic3ViIjoiRTEwMDIzIiwiYXVkIjoibWVldGluZyIsImV4cCI6MTc5MjM3NTc0MCwiaWF0IjoxNzkyMzc1MTQwLCJqdGkiOiJqdGktMDAwMSIsImF6cCI6Im1lZXRpbmciLCJjbGllbnRfdHlwZSI6IndlYiIsInBlcm1fdmVyIjo3LCJzaWQiOiJiajEuc2Vzcy0wMDAxIiwiYXNpZCI6ImFzLmFwcC0wMDAxIn0.nIZ1lrUURac_Yie_a2JXQ_9U_Q-zUdyTzyUpUbiahLvAkJEoCBtZXcJ24iIzDNS7PreL5DCHHPmV7OxCS4GiluN30ofyR9jG_tSwuA-ZUGNdt4iCOznSwWbjUCeGRaYbwnl5w-Ay7vT1OWHiiZurqLMYc6hOB3B5rrqUKNcxtO5wZzaLmfueHe-Z236xDN8KBARV4NgwQtIzP4_TrKdHENtPxCNcUVBpN4_Vo9meQr8ve6AbT_3aIWGHvuwWHHw04pQIkcHcbOWELrdxbfUZ_UMWoETa4uR_C6NP07Y8yC1hb_jwh9i6n7pDJk9kMzKU7FH4zyeK5zTkf1rW8opgrg",
+      "expect": {
+        "valid": false,
+        "error": "AUTH_TOKEN_INVALID",
+        "user": null
+      }
+    },
+    {
+      "id": "expired_beyond_skew",
+      "description": "过期 61 秒，超出容差",
+      "token": "eyJhbGciOiJSUzI1NiIsImtpZCI6InJzYS0xIiwidHlwIjoiYXQrand0In0.eyJpc3MiOiJodHRwczovL2F1dGguZXhhbXBsZS50ZXN0Iiwic3ViIjoiRTEwMDIzIiwiYXVkIjoibWVldGluZyIsImV4cCI6MTc5MjM3NTEzOSwiaWF0IjoxNzkyMzc1MTQwLCJqdGkiOiJqdGktMDAwMSIsImF6cCI6Im1lZXRpbmciLCJjbGllbnRfdHlwZSI6IndlYiIsInBlcm1fdmVyIjo3LCJzaWQiOiJiajEuc2Vzcy0wMDAxIiwiYXNpZCI6ImFzLmFwcC0wMDAxIn0.eUSKPH3QWt2tVJuIiRgru3IOjVAYKmmXqqLtIoEafi5CJur_sdY5rlCVOWoeBV5bQTl8I6puq3f9xy431EdXQ8vju7Q98LTvtxb7xQ8qDMV7F_dTYrhLpeMzm_0nVGKkT7l3j59tezZPW07bOQT9fr-2aoXOiR0xs1SF3yFo4jUPvu2seX3GjV5tnkDGrXnLVlezR0keLtwQkS6nq_knsI8Py1Nmgj0ICjuMJrrSmi4xjLjqEpp-XKy3IXlDfCCfIMLj9YGJXoovelPjVBY1U0IdTtNzGrBkilGXB8l5xPoAEkdHOyFh2VCKFDOfyjEkBA2Mx6JR3rK-CQsgOSnRsw",
+      "expect": {
+        "valid": false,
+        "error": "AUTH_TOKEN_EXPIRED",
+        "user": null
+      }
+    },
+    {
+      "id": "expired_and_wrong_aud",
+      "description": "同时过期且 aud 错误 → 按步骤顺序返回 EXPIRED",
+      "token": "eyJhbGciOiJSUzI1NiIsImtpZCI6InJzYS0xIiwidHlwIjoiYXQrand0In0.eyJpc3MiOiJodHRwczovL2F1dGguZXhhbXBsZS50ZXN0Iiwic3ViIjoiRTEwMDIzIiwiYXVkIjoib3RoZXItYXBwIiwiZXhwIjoxNzkyMzcxNjAwLCJpYXQiOjE3OTIzNzUxNDAsImp0aSI6Imp0aS0wMDAxIiwiYXpwIjoibWVldGluZyIsImNsaWVudF90eXBlIjoid2ViIiwicGVybV92ZXIiOjcsInNpZCI6ImJqMS5zZXNzLTAwMDEiLCJhc2lkIjoiYXMuYXBwLTAwMDEifQ.w-WlbplVehqRiECoexyMx7UzczR2mwb6F1wfyuW9ltw4QO59TN_ZAm0du6vXjDgRrG_YPOgiKle2JPAdcVOvrOonfMU49g-FTYLrlrjV6AzQcp-_6grJxeyOq6aCYXAMS7Jo8yKH7VJxSd9TcJmcR0XJ2eH8hsQDKu-0jB7KldTlsRMpLbNIcRxutn8hR0z0KoRkCpzUI9YVNB2YiDue1hUsqa6xnsYs-LmQOcQ5gx5BHB8RIoxvpZM5Dt-1R8N8AxWl9fO359kl40H9z_Dtht-ACpyCerb9clJKHB1A7A_jrtmUtaJsbcUaPRLtzq1UIiDkmbdWs2kI4z64mu9e9g",
+      "expect": {
+        "valid": false,
+        "error": "AUTH_TOKEN_EXPIRED",
+        "user": null
+      }
+    },
+    {
+      "id": "nbf_future",
+      "description": "nbf 在未来 120 秒",
+      "token": "eyJhbGciOiJSUzI1NiIsImtpZCI6InJzYS0xIiwidHlwIjoiYXQrand0In0.eyJpc3MiOiJodHRwczovL2F1dGguZXhhbXBsZS50ZXN0Iiwic3ViIjoiRTEwMDIzIiwiYXVkIjoibWVldGluZyIsImV4cCI6MTc5MjM3NTc0MCwiaWF0IjoxNzkyMzc1MTQwLCJqdGkiOiJqdGktMDAwMSIsImF6cCI6Im1lZXRpbmciLCJjbGllbnRfdHlwZSI6IndlYiIsInBlcm1fdmVyIjo3LCJzaWQiOiJiajEuc2Vzcy0wMDAxIiwiYXNpZCI6ImFzLmFwcC0wMDAxIiwibmJmIjoxNzkyMzc1MzIwfQ.Qy1INnC9Hynlz84NPLSLdNniTOwYc1cDEijJnrlatV27khkCj0QePZvEtgNtDn_V6fVeC0bu80VSt2MeyyC3Exp46Erm6t06Xf-K29TCRKVmxJ83RyBG34nJOSz9gsYcYSMnHZBU6D789GLoHEeUhgeaWXvIoYS2S07Wl1oh9J7KoqdFEtT7OBYiSDm2pByE05Z0Y1UwXAalKB1igCEhvhGx2skoKtfaG37OxPoD6_cayLZxWLYmsd_HUgc5HxK7dXNBlJzGbSaV3tt4dOUa1uJRAm2TezUdm8WOJhqPgagy7ZTGx_sWb2wffKsuykeM326NVUOdE9cH8-N9BtmRcQ",
+      "expect": {
+        "valid": false,
+        "error": "AUTH_TOKEN_INVALID",
+        "user": null
+      }
+    },
+    {
+      "id": "iat_future",
+      "description": "iat 在未来 120 秒",
+      "token": "eyJhbGciOiJSUzI1NiIsImtpZCI6InJzYS0xIiwidHlwIjoiYXQrand0In0.eyJpc3MiOiJodHRwczovL2F1dGguZXhhbXBsZS50ZXN0Iiwic3ViIjoiRTEwMDIzIiwiYXVkIjoibWVldGluZyIsImV4cCI6MTc5MjM3NTc0MCwiaWF0IjoxNzkyMzc1MzIwLCJqdGkiOiJqdGktMDAwMSIsImF6cCI6Im1lZXRpbmciLCJjbGllbnRfdHlwZSI6IndlYiIsInBlcm1fdmVyIjo3LCJzaWQiOiJiajEuc2Vzcy0wMDAxIiwiYXNpZCI6ImFzLmFwcC0wMDAxIn0.pgaymu-Wke_Wj8bXslEesWckK2kUsTxfgpStOgHHPfg91qzafK02guE8Ghym1ySEcYk-s4_Rf-ub6NQCAavYVbLVW4SxomVjgDkL8hW9jnooM_8edREUoCP577cTzCGkjxYeR_Abu0ee3pV4u2dXebeLFmhlWYJwCRAdx1qWjIRzKACQC5fm1USSXy-ZgScCwOnRJ_XAZZsbvDw1k8S1TuanxChP0StqnT667rYp0TTcVrjmoYnyd3Qf04aexmcgeQRk7_bpu6YZQas-m-kdpeBSs7vAxO18-Gi66USzSup3e44FfsvtEjie3Lcz8T1rsv3jr1F2PhP1joKRp7K0Mg",
+      "expect": {
+        "valid": false,
+        "error": "AUTH_TOKEN_INVALID",
+        "user": null
+      }
+    },
+    {
+      "id": "aud_mismatch",
+      "description": "aud 为其他应用",
+      "token": "eyJhbGciOiJSUzI1NiIsImtpZCI6InJzYS0xIiwidHlwIjoiYXQrand0In0.eyJpc3MiOiJodHRwczovL2F1dGguZXhhbXBsZS50ZXN0Iiwic3ViIjoiRTEwMDIzIiwiYXVkIjoib3RoZXItYXBwIiwiZXhwIjoxNzkyMzc1NzQwLCJpYXQiOjE3OTIzNzUxNDAsImp0aSI6Imp0aS0wMDAxIiwiYXpwIjoibWVldGluZyIsImNsaWVudF90eXBlIjoid2ViIiwicGVybV92ZXIiOjcsInNpZCI6ImJqMS5zZXNzLTAwMDEiLCJhc2lkIjoiYXMuYXBwLTAwMDEifQ.0p0fIl7oYyi5HzcMzCnO7iRM4svgdnCKP7UYwssbYKrva66FJOyWPu28b0ReSXJxETdsKsUUQ_rSsGRpnevNwvX_RnmwUWDYbtOHMS5-k7sHSDy-uFcNJndlWP_SHJJfmExO3TLp3Fmpzn58wftQkQKqFtyyQxyG_Tk6bHYggbozvsF861GzpajMGUE9i5FfBgxJxr0vDPxpUxzQa_Fwy4UzGzO_axTcNlq7YBHiz0p9kUDEdfJYzpRf2xj5yiyj0uW-1aoJVFDZu_RsBDWCgZI3nzbyyA845wTLzwR0EFOeVgCO7aFjdaiQjz13Zl1P7ZvVUHzpUaQr0savFW9fdw",
+      "expect": {
+        "valid": false,
+        "error": "AUTH_AUDIENCE_MISMATCH",
+        "user": null
+      }
+    },
+    {
+      "id": "aud_array_mismatch",
+      "description": "aud 数组不包含本应用",
+      "token": "eyJhbGciOiJSUzI1NiIsImtpZCI6InJzYS0xIiwidHlwIjoiYXQrand0In0.eyJpc3MiOiJodHRwczovL2F1dGguZXhhbXBsZS50ZXN0Iiwic3ViIjoiRTEwMDIzIiwiYXVkIjpbImdhdGV3YXkiLCJvdGhlci1hcHAiXSwiZXhwIjoxNzkyMzc1NzQwLCJpYXQiOjE3OTIzNzUxNDAsImp0aSI6Imp0aS0wMDAxIiwiYXpwIjoibWVldGluZyIsImNsaWVudF90eXBlIjoid2ViIiwicGVybV92ZXIiOjcsInNpZCI6ImJqMS5zZXNzLTAwMDEiLCJhc2lkIjoiYXMuYXBwLTAwMDEifQ.lTzqZ1xDR4w75MEWm-6uWPcgbqpgH5upvEjGMExo_TITCRcQ5UfDt2Lcv33JyLHoLhSeP-EBpG-N5qSdFd4O0TOGJtGaPzSEtP47Cznj75UQNDeQZu3NsQwxCMSVe9nMehG6UdtCLu3Sm2r9I5F4hNNlf5HsSiIGQI2HCn9eKFxLPHR4g38632wcvgP1hqNvXVNmOSJcSkoRb92eJFCvi4-BUppyyDrn4Gazhjen_jf5F2-13gtWDuT8-0ql2V8popOQDagh0QJFxGHaSDY4ZpDpKqGqQ3hMJgxxzGDOQzUz8Hb7-GoH9qaAY8SxEg0Wq6-K-pDMy9SRu05bQwPoPA",
+      "expect": {
+        "valid": false,
+        "error": "AUTH_AUDIENCE_MISMATCH",
+        "user": null
+      }
+    },
+    {
+      "id": "aud_case_sensitive",
+      "description": "aud 区分大小写",
+      "token": "eyJhbGciOiJSUzI1NiIsImtpZCI6InJzYS0xIiwidHlwIjoiYXQrand0In0.eyJpc3MiOiJodHRwczovL2F1dGguZXhhbXBsZS50ZXN0Iiwic3ViIjoiRTEwMDIzIiwiYXVkIjoiTWVldGluZyIsImV4cCI6MTc5MjM3NTc0MCwiaWF0IjoxNzkyMzc1MTQwLCJqdGkiOiJqdGktMDAwMSIsImF6cCI6Im1lZXRpbmciLCJjbGllbnRfdHlwZSI6IndlYiIsInBlcm1fdmVyIjo3LCJzaWQiOiJiajEuc2Vzcy0wMDAxIiwiYXNpZCI6ImFzLmFwcC0wMDAxIn0.VUNt0DXQ1h28UmevquMD4fqgIsPzH561J3Sk7XZqbUn7HkZfSsH-vPrZuMnGX39dNJYCpxxqPtJNQK5pxJQIVHdtDu-teGLrGWjF-7p32wQdOg-pTxQ4qyhOXnCrQDS6rG7iyfK-s2tpm-b4TSqG_XbO9up55UtcL30jxRFxjjsbE8QJ954ebCFUyTB6uvYEPGO89gwAb0B3Fy0CvRny3R7ls4JgTSVx5-YK1yBqLzKTV6xlYMWkEnDFgZt8RWXLyERKP3XvkcymfCh4eT2YDa8spGvm9V4oNxUZP4-N4o1_CSP7R-evuyUAQ3tVz86oEC-QRiaXPLfys2Zg_l7OBw",
+      "expect": {
+        "valid": false,
+        "error": "AUTH_AUDIENCE_MISMATCH",
+        "user": null
+      }
+    },
+    {
+      "id": "revoked_session",
+      "description": "全局会话被吊销",
+      "token": "eyJhbGciOiJSUzI1NiIsImtpZCI6InJzYS0xIiwidHlwIjoiYXQrand0In0.eyJpc3MiOiJodHRwczovL2F1dGguZXhhbXBsZS50ZXN0Iiwic3ViIjoiRTEwMDIzIiwiYXVkIjoibWVldGluZyIsImV4cCI6MTc5MjM3NTc0MCwiaWF0IjoxNzkyMzc1MTQwLCJqdGkiOiJqdGktMDAwMSIsImF6cCI6Im1lZXRpbmciLCJjbGllbnRfdHlwZSI6IndlYiIsInBlcm1fdmVyIjo3LCJzaWQiOiJiajEuc2Vzcy0wMDAxIiwiYXNpZCI6ImFzLmFwcC0wMDAxIn0.ocXfmd7TkOqSKYSoRCUChxXOwMZR7_1o70Fh1fQY6DNp5-8VLpAIhIgDqZddFNV19vXfMW_y-OvTfEemXMT_s31al8Uw62_y4Uz9u243ZwVVVyPYEufzWuOD606I2W6X2tsT5z2_D1LXTz4amswI0U_IGuPaIPaxiAN9oFawAIFeqvC4CTfyrJQzsybL1mGMXusSJ5hAYlCpsd4S6UY85n8CH2tNx4EnfNEtoSYB919kP9GkiY3hq8uqj3ey87iNC9_gsZes3OA5bymKzu8_q1HFfP1mpGDrGRYnub_BhQ0lACagk2-G0FFtiplRibTBgSmAyJoANSILLalewJ8z1A",
+      "revocations": [
+        {
+          "id": "rv-1",
+          "event": "auth.revoked",
+          "type": "session",
+          "ts": 1792375170,
+          "reason": "admin_kick",
+          "sid": "bj1.sess-0001"
+        }
+      ],
+      "expect": {
+        "valid": false,
+        "error": "AUTH_SESSION_REVOKED",
+        "user": null
+      }
+    },
+    {
+      "id": "revoked_app_session",
+      "description": "应用会话被吊销",
+      "token": "eyJhbGciOiJSUzI1NiIsImtpZCI6InJzYS0xIiwidHlwIjoiYXQrand0In0.eyJpc3MiOiJodHRwczovL2F1dGguZXhhbXBsZS50ZXN0Iiwic3ViIjoiRTEwMDIzIiwiYXVkIjoibWVldGluZyIsImV4cCI6MTc5MjM3NTc0MCwiaWF0IjoxNzkyMzc1MTQwLCJqdGkiOiJqdGktMDAwMSIsImF6cCI6Im1lZXRpbmciLCJjbGllbnRfdHlwZSI6IndlYiIsInBlcm1fdmVyIjo3LCJzaWQiOiJiajEuc2Vzcy0wMDAxIiwiYXNpZCI6ImFzLmFwcC0wMDAxIn0.ocXfmd7TkOqSKYSoRCUChxXOwMZR7_1o70Fh1fQY6DNp5-8VLpAIhIgDqZddFNV19vXfMW_y-OvTfEemXMT_s31al8Uw62_y4Uz9u243ZwVVVyPYEufzWuOD606I2W6X2tsT5z2_D1LXTz4amswI0U_IGuPaIPaxiAN9oFawAIFeqvC4CTfyrJQzsybL1mGMXusSJ5hAYlCpsd4S6UY85n8CH2tNx4EnfNEtoSYB919kP9GkiY3hq8uqj3ey87iNC9_gsZes3OA5bymKzu8_q1HFfP1mpGDrGRYnub_BhQ0lACagk2-G0FFtiplRibTBgSmAyJoANSILLalewJ8z1A",
+      "revocations": [
+        {
+          "id": "rv-2",
+          "event": "auth.revoked",
+          "type": "app_session",
+          "ts": 1792375170,
+          "reason": "admin_kick",
+          "asid": "as.app-0001"
+        }
+      ],
+      "expect": {
+        "valid": false,
+        "error": "AUTH_SESSION_REVOKED",
+        "user": null
+      }
+    },
+    {
+      "id": "revoked_user_before_iat",
+      "description": "用户被吊销，token 签发早于 not_before",
+      "token": "eyJhbGciOiJSUzI1NiIsImtpZCI6InJzYS0xIiwidHlwIjoiYXQrand0In0.eyJpc3MiOiJodHRwczovL2F1dGguZXhhbXBsZS50ZXN0Iiwic3ViIjoiRTEwMDIzIiwiYXVkIjoibWVldGluZyIsImV4cCI6MTc5MjM3NTc0MCwiaWF0IjoxNzkyMzc1MTQwLCJqdGkiOiJqdGktMDAwMSIsImF6cCI6Im1lZXRpbmciLCJjbGllbnRfdHlwZSI6IndlYiIsInBlcm1fdmVyIjo3LCJzaWQiOiJiajEuc2Vzcy0wMDAxIiwiYXNpZCI6ImFzLmFwcC0wMDAxIn0.ocXfmd7TkOqSKYSoRCUChxXOwMZR7_1o70Fh1fQY6DNp5-8VLpAIhIgDqZddFNV19vXfMW_y-OvTfEemXMT_s31al8Uw62_y4Uz9u243ZwVVVyPYEufzWuOD606I2W6X2tsT5z2_D1LXTz4amswI0U_IGuPaIPaxiAN9oFawAIFeqvC4CTfyrJQzsybL1mGMXusSJ5hAYlCpsd4S6UY85n8CH2tNx4EnfNEtoSYB919kP9GkiY3hq8uqj3ey87iNC9_gsZes3OA5bymKzu8_q1HFfP1mpGDrGRYnub_BhQ0lACagk2-G0FFtiplRibTBgSmAyJoANSILLalewJ8z1A",
+      "revocations": [
+        {
+          "id": "rv-3",
+          "event": "auth.revoked",
+          "type": "user",
+          "ts": 1792375170,
+          "reason": "user_disabled",
+          "sub": "E10023",
+          "not_before": 1792375170
+        }
+      ],
+      "expect": {
+        "valid": false,
+        "error": "AUTH_SESSION_REVOKED",
+        "user": null
+      }
+    },
+    {
+      "id": "revoked_user_token_issued_after",
+      "description": "用户被吊销后重新登录签发的 token 不受影响",
+      "token": "eyJhbGciOiJSUzI1NiIsImtpZCI6InJzYS0xIiwidHlwIjoiYXQrand0In0.eyJpc3MiOiJodHRwczovL2F1dGguZXhhbXBsZS50ZXN0Iiwic3ViIjoiRTEwMDIzIiwiYXVkIjoibWVldGluZyIsImV4cCI6MTc5MjM3NTc0MCwiaWF0IjoxNzkyMzc1MTQwLCJqdGkiOiJqdGktMDAwMSIsImF6cCI6Im1lZXRpbmciLCJjbGllbnRfdHlwZSI6IndlYiIsInBlcm1fdmVyIjo3LCJzaWQiOiJiajEuc2Vzcy0wMDAxIiwiYXNpZCI6ImFzLmFwcC0wMDAxIn0.ocXfmd7TkOqSKYSoRCUChxXOwMZR7_1o70Fh1fQY6DNp5-8VLpAIhIgDqZddFNV19vXfMW_y-OvTfEemXMT_s31al8Uw62_y4Uz9u243ZwVVVyPYEufzWuOD606I2W6X2tsT5z2_D1LXTz4amswI0U_IGuPaIPaxiAN9oFawAIFeqvC4CTfyrJQzsybL1mGMXusSJ5hAYlCpsd4S6UY85n8CH2tNx4EnfNEtoSYB919kP9GkiY3hq8uqj3ey87iNC9_gsZes3OA5bymKzu8_q1HFfP1mpGDrGRYnub_BhQ0lACagk2-G0FFtiplRibTBgSmAyJoANSILLalewJ8z1A",
+      "revocations": [
+        {
+          "id": "rv-4",
+          "event": "auth.revoked",
+          "type": "user",
+          "ts": 1792375170,
+          "reason": "admin_kick",
+          "sub": "E10023",
+          "not_before": 1792375080
+        }
+      ],
+      "expect": {
+        "valid": true,
+        "error": null,
+        "user": {
+          "emp_no": "E10023",
+          "subject": "E10023",
+          "is_machine": false,
+          "name": null,
+          "email": null,
+          "dept_id": null,
+          "dept_name": null,
+          "client_id": "meeting",
+          "client_type": "web",
+          "sid": "bj1.sess-0001",
+          "asid": "as.app-0001",
+          "scopes": [],
+          "perm_ver": 7,
+          "amr": [],
+          "auth_time": null,
+          "token_id": "jti-0001",
+          "expires_at": 1792375740
+        }
+      }
+    },
+    {
+      "id": "revoked_client_by_azp",
+      "description": "客户端被禁用（匹配 azp）",
+      "token": "eyJhbGciOiJSUzI1NiIsImtpZCI6InJzYS0xIiwidHlwIjoiYXQrand0In0.eyJpc3MiOiJodHRwczovL2F1dGguZXhhbXBsZS50ZXN0Iiwic3ViIjoiRTEwMDIzIiwiYXVkIjoibWVldGluZyIsImV4cCI6MTc5MjM3NTc0MCwiaWF0IjoxNzkyMzc1MTQwLCJqdGkiOiJqdGktMDAwMSIsImF6cCI6Im1lZXRpbmciLCJjbGllbnRfdHlwZSI6IndlYiIsInBlcm1fdmVyIjo3LCJzaWQiOiJiajEuc2Vzcy0wMDAxIiwiYXNpZCI6ImFzLmFwcC0wMDAxIn0.ocXfmd7TkOqSKYSoRCUChxXOwMZR7_1o70Fh1fQY6DNp5-8VLpAIhIgDqZddFNV19vXfMW_y-OvTfEemXMT_s31al8Uw62_y4Uz9u243ZwVVVyPYEufzWuOD606I2W6X2tsT5z2_D1LXTz4amswI0U_IGuPaIPaxiAN9oFawAIFeqvC4CTfyrJQzsybL1mGMXusSJ5hAYlCpsd4S6UY85n8CH2tNx4EnfNEtoSYB919kP9GkiY3hq8uqj3ey87iNC9_gsZes3OA5bymKzu8_q1HFfP1mpGDrGRYnub_BhQ0lACagk2-G0FFtiplRibTBgSmAyJoANSILLalewJ8z1A",
+      "revocations": [
+        {
+          "id": "rv-5",
+          "event": "auth.revoked",
+          "type": "client",
+          "ts": 1792375170,
+          "reason": "client_disabled",
+          "client_id": "meeting",
+          "not_before": 1792375170
+        }
+      ],
+      "expect": {
+        "valid": false,
+        "error": "AUTH_SESSION_REVOKED",
+        "user": null
+      }
+    },
+    {
+      "id": "revoked_client_by_aud",
+      "description": "客户端被禁用（匹配 aud 数组中的另一受众，azp 不匹配）",
+      "token": "eyJhbGciOiJSUzI1NiIsImtpZCI6InJzYS0xIiwidHlwIjoiYXQrand0In0.eyJpc3MiOiJodHRwczovL2F1dGguZXhhbXBsZS50ZXN0Iiwic3ViIjoiRTEwMDIzIiwiYXVkIjpbIm1lZXRpbmciLCJnYXRld2F5Il0sImV4cCI6MTc5MjM3NTc0MCwiaWF0IjoxNzkyMzc1MTQwLCJqdGkiOiJqdGktMDAwMSIsImF6cCI6Im1lZXRpbmciLCJjbGllbnRfdHlwZSI6IndlYiIsInBlcm1fdmVyIjo3LCJzaWQiOiJiajEuc2Vzcy0wMDAxIiwiYXNpZCI6ImFzLmFwcC0wMDAxIn0.LT1U-s-xwKAPV-qCOvTXMfrmtgbJdeXdR4h-O34VV0zcQ5_x5Od5Jx0eGatSnOm-E0WV3g-APac_V9T-toOBeH2KxHCnorRnUMcNKmaDSNZj5gt__GRz8FcfUMP88xuuBXW2Av5bOf75YVqgi8HvU-YMAL-p33IZiOkAeXTxks128cFya3N87nBhrqJkNiEFkyhoEuFyBEtKc_TtXhR8DOcYAeGHyB9c9JoxJHQ4Gyo_gT0gpNdaWcY-trb66_uHur6Q-LWCgiuMM-287EXVMt6bqsLOYcpfcgqiJV00SVkoWqDwxMb8OMTlZ8hQzgL2H3gBmSQblfMkItOI171o9w",
+      "revocations": [
+        {
+          "id": "rv-6",
+          "event": "auth.revoked",
+          "type": "client",
+          "ts": 1792375170,
+          "reason": "client_disabled",
+          "client_id": "gateway",
+          "not_before": 1792375170
+        }
+      ],
+      "expect": {
+        "valid": false,
+        "error": "AUTH_SESSION_REVOKED",
+        "user": null
+      }
+    },
+    {
+      "id": "revoked_other_session_no_effect",
+      "description": "其他会话被吊销不影响本 token",
+      "token": "eyJhbGciOiJSUzI1NiIsImtpZCI6InJzYS0xIiwidHlwIjoiYXQrand0In0.eyJpc3MiOiJodHRwczovL2F1dGguZXhhbXBsZS50ZXN0Iiwic3ViIjoiRTEwMDIzIiwiYXVkIjoibWVldGluZyIsImV4cCI6MTc5MjM3NTc0MCwiaWF0IjoxNzkyMzc1MTQwLCJqdGkiOiJqdGktMDAwMSIsImF6cCI6Im1lZXRpbmciLCJjbGllbnRfdHlwZSI6IndlYiIsInBlcm1fdmVyIjo3LCJzaWQiOiJiajEuc2Vzcy0wMDAxIiwiYXNpZCI6ImFzLmFwcC0wMDAxIn0.ocXfmd7TkOqSKYSoRCUChxXOwMZR7_1o70Fh1fQY6DNp5-8VLpAIhIgDqZddFNV19vXfMW_y-OvTfEemXMT_s31al8Uw62_y4Uz9u243ZwVVVyPYEufzWuOD606I2W6X2tsT5z2_D1LXTz4amswI0U_IGuPaIPaxiAN9oFawAIFeqvC4CTfyrJQzsybL1mGMXusSJ5hAYlCpsd4S6UY85n8CH2tNx4EnfNEtoSYB919kP9GkiY3hq8uqj3ey87iNC9_gsZes3OA5bymKzu8_q1HFfP1mpGDrGRYnub_BhQ0lACagk2-G0FFtiplRibTBgSmAyJoANSILLalewJ8z1A",
+      "revocations": [
+        {
+          "id": "rv-7",
+          "event": "auth.revoked",
+          "type": "session",
+          "ts": 1792375170,
+          "reason": "admin_kick",
+          "sid": "bj1.sess-9999"
+        },
+        {
+          "id": "rv-8",
+          "event": "auth.revoked",
+          "type": "app_session",
+          "ts": 1792375170,
+          "reason": "admin_kick",
+          "asid": "as.app-9999"
+        },
+        {
+          "id": "rv-9",
+          "event": "auth.revoked",
+          "type": "user",
+          "ts": 1792375170,
+          "reason": "admin_kick",
+          "sub": "E99999",
+          "not_before": 1792375200
+        }
+      ],
+      "expect": {
+        "valid": true,
+        "error": null,
+        "user": {
+          "emp_no": "E10023",
+          "subject": "E10023",
+          "is_machine": false,
+          "name": null,
+          "email": null,
+          "dept_id": null,
+          "dept_name": null,
+          "client_id": "meeting",
+          "client_type": "web",
+          "sid": "bj1.sess-0001",
+          "asid": "as.app-0001",
+          "scopes": [],
+          "perm_ver": 7,
+          "amr": [],
+          "auth_time": null,
+          "token_id": "jti-0001",
+          "expires_at": 1792375740
+        }
+      }
+    },
+    {
+      "id": "revoked_session_m2m_unaffected",
+      "description": "m2m token 无 sid，session 吊销不影响",
+      "token": "eyJhbGciOiJSUzI1NiIsImtpZCI6InJzYS0xIiwidHlwIjoiYXQrand0In0.eyJpc3MiOiJodHRwczovL2F1dGguZXhhbXBsZS50ZXN0Iiwic3ViIjoiY2xpZW50OnJlcG9ydC1qb2IiLCJhdWQiOiJtZWV0aW5nIiwiZXhwIjoxNzkyMzc1NzQwLCJpYXQiOjE3OTIzNzUxNDAsImp0aSI6Imp0aS0wMDAxIiwiYXpwIjoicmVwb3J0LWpvYiIsImNsaWVudF90eXBlIjoibTJtIiwicGVybV92ZXIiOjd9.LAEes4-wyJTwTo5aL6VmcLUHY1LvlpPZlfd6g_-4f7uhK_ixLtUmMO-YK5hNnPXD6xENUlrmQYpA7ED9WBHXRgMoXOn1Rs6sQCAiR05D8SGakY9TfeqM4E50M_Rp_K_Cm1abOuFXF27cyeuN3kNFUKzenI0qRXDXeXrAM4HPe9Czl6Dxrvmu780CuPMAt-txUIlwkYTqP7MpPBORyqZwBJzxix-CLsjAw6DDLD-Q2C1g7Adjc6LpL5QFcXls96vKWsEt1bKTvrDFNKBOyT-3xxdPVahF7fhPQGVOVl_5GgLoS2w4aSf07elWye6a_TZ1e5YXC5cdqbuHhxuloL7hvg",
+      "revocations": [
+        {
+          "id": "rv-10",
+          "event": "auth.revoked",
+          "type": "session",
+          "ts": 1792375170,
+          "reason": "admin_kick",
+          "sid": "bj1.sess-0001"
+        }
+      ],
+      "expect": {
+        "valid": true,
+        "error": null,
+        "user": {
+          "emp_no": null,
+          "subject": "client:report-job",
+          "is_machine": true,
+          "name": null,
+          "email": null,
+          "dept_id": null,
+          "dept_name": null,
+          "client_id": "report-job",
+          "client_type": "m2m",
+          "sid": null,
+          "asid": null,
+          "scopes": [],
+          "perm_ver": 7,
+          "amr": [],
+          "auth_time": null,
+          "token_id": "jti-0001",
+          "expires_at": 1792375740
+        }
+      }
+    }
+  ]
+}

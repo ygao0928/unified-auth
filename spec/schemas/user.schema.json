@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://unified-auth.spec/schemas/user.schema.json",
+  "title": "User",
+  "description": "SDK 校验 token 成功后对业务暴露的用户对象。三端字段名按各语言惯例转换（Go: EmpNo / Python: emp_no / Java: empNo），语义必须一致。映射规则见 token-validation.md。",
+  "type": "object",
+  "required": ["emp_no", "subject", "is_machine", "name", "email", "dept_id", "dept_name", "client_id", "client_type", "sid", "asid", "scopes", "perm_ver", "amr", "auth_time", "token_id", "expires_at"],
+  "properties": {
+    "emp_no": { "type": ["string", "null"], "description": "工号；m2m 为 null" },
+    "subject": { "type": "string", "description": "原始 sub" },
+    "is_machine": { "type": "boolean" },
+    "name": { "type": ["string", "null"] },
+    "email": { "type": ["string", "null"] },
+    "dept_id": { "type": ["string", "null"] },
+    "dept_name": { "type": ["string", "null"] },
+    "client_id": { "type": "string", "description": "取自 azp" },
+    "client_type": { "type": "string", "enum": ["web", "ssr", "app", "miniapp", "m2m"] },
+    "sid": { "type": ["string", "null"] },
+    "asid": { "type": ["string", "null"] },
+    "scopes": { "type": "array", "items": { "type": "string" } },
+    "perm_ver": { "type": "integer", "minimum": 0 },
+    "amr": { "type": "array", "items": { "type": "string" } },
+    "auth_time": { "type": ["integer", "null"] },
+    "token_id": { "type": "string" },
+    "expires_at": { "type": "integer" }
+  },
+  "additionalProperties": false
+}

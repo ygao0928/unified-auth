@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://unified-auth.spec/schemas/access-token-claims.schema.json",
+  "title": "Access Token Claims",
+  "description": "认证中心签发的 Access Token（JWT, typ=at+jwt）的 payload。SDK 校验算法见 token-validation.md。未知 claims 必须被忽略。",
+  "type": "object",
+  "required": ["iss", "sub", "aud", "exp", "iat", "jti", "azp", "client_type", "perm_ver"],
+  "properties": {
+    "iss": { "type": "string", "format": "uri", "description": "认证中心 issuer，内外网统一" },
+    "sub": { "type": "string", "minLength": 1, "description": "用户 token 为工号；m2m token 为 client:<client_id>" },
+    "aud": {
+      "description": "受众 client_id；token exchange 时可为数组",
+      "oneOf": [
+        { "type": "string", "minLength": 1 },
+        { "type": "array", "items": { "type": "string", "minLength": 1 }, "minItems": 1 }
+      ]
+    },
+    "exp": { "type": "integer" },
+    "iat": { "type": "integer" },
+    "nbf": { "type": "integer" },
+    "jti": { "type": "string", "minLength": 1 },
+    "azp": { "type": "string", "minLength": 1, "description": "实际发起请求的客户端 client_id" },
+    "client_type": { "type": "string", "enum": ["web", "ssr", "app", "miniapp", "m2m"] },
+    "perm_ver": { "type": "integer", "minimum": 0, "description": "用户权限版本号，权限变更时递增" },
+    "sid": { "type": "string", "minLength": 1, "description": "全局会话 ID，前缀为机房标识，如 bj1.xxxx" },
+    "asid": { "type": "string", "minLength": 1, "description": "应用会话 ID" },
+    "name": { "type": "string" },
+    "email": { "type": "string" },
+    "dept_id": { "type": "string" },
+    "dept_name": { "type": "string" },
+    "scope": { "type": "string", "description": "空格分隔的 scope 列表（Open API 场景）" },
+    "amr": { "type": "array", "items": { "type": "string" }, "description": "认证方式，如 [\"pwd\"] 或 [\"pwd\",\"otp\"]" },
+    "auth_time": { "type": "integer" }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "client_type": { "not": { "const": "m2m" } } } },
+      "then": { "required": ["sid", "asid"] }
+    },
+    {
+      "if": { "properties": { "client_type": { "const": "m2m" } } },
+      "then": { "properties": { "sub": { "pattern": "^client:.+" } } }
+    }
+  ],
+  "additionalProperties": true,
+  "examples": [
+    {
+      "iss": "https://auth.corp.com",
+      "sub": "E10023",
+      "aud": "meeting",
+      "exp": 1792375200,
+      "iat": 1792374600,
+      "jti": "01JAX9Y8Q4Z2K7",
+      "azp": "meeting",
+      "client_type": "web",
+      "perm_ver": 7,
+      "sid": "bj1.8f2c4a9e",
+      "asid": "as.31d07c",
+      "name": "张三",
+      "dept_id": "D1002",
+      "amr": ["pwd"],
+      "auth_time": 1792374500
+    }
+  ]
+}

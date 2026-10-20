@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://unified-auth.spec/schemas/authz-result.schema.json",
+  "title": "Authorization Result",
+  "description": "GET /api/v1/authz/users/{sub}/apps/{app} 的响应：用户在该应用下有效的（全局角色 ∪ 本应用角色）权限。data_scope 为未降级的值，降级由 SDK 完成，见 authorization.md。",
+  "type": "object",
+  "required": ["sub", "app", "perm_ver", "roles", "permissions", "data_scope"],
+  "properties": {
+    "sub": { "type": "string" },
+    "app": { "type": "string" },
+    "perm_ver": { "type": "integer", "minimum": 0 },
+    "roles": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "scope", "name"],
+        "properties": {
+          "id": { "type": "string" },
+          "scope": { "type": "string", "pattern": "^(global|app:[a-z0-9][a-z0-9_-]{0,63})$" },
+          "name": { "type": "string" },
+          "data_scope": { "type": ["string", "null"], "enum": ["self", "dept", "dept_and_sub", "all", null] }
+        },
+        "additionalProperties": false
+      }
+    },
+    "permissions": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "type": "string", "pattern": "^(\\*|[a-z0-9][a-z0-9_-]{0,63})(:(\\*|[a-z0-9][a-z0-9_-]{0,63})){2}$" },
+      "description": "已授予权限点（可含通配符），已去重"
+    },
+    "data_scope": { "type": ["string", "null"], "enum": ["self", "dept", "dept_and_sub", "all", null] },
+    "cache_ttl": { "type": "integer", "minimum": 0, "description": "服务端建议的缓存秒数，SDK 取 min(本地配置, 此值)" }
+  },
+  "additionalProperties": false,
+  "examples": [
+    {
+      "sub": "E10023",
+      "app": "meeting",
+      "perm_ver": 7,
+      "roles": [
+        { "id": "r_meeting_host", "scope": "app:meeting", "name": "会议主持人", "data_scope": "dept" },
+        { "id": "r_auditor", "scope": "global", "name": "审计员", "data_scope": null }
+      ],
+      "permissions": ["meeting:user:list", "meeting:record:*", "*:audit:view"],
+      "data_scope": "dept",
+      "cache_ttl": 300
+    }
+  ]
+}

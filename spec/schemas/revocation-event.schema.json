@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://unified-auth.spec/schemas/revocation-event.schema.json",
+  "title": "Revocation Event (auth.revoked)",
+  "description": "会话/用户/客户端吊销事件。经 MQ（内网）或 SSE /api/v1/revocations/stream（公网/独立部署）下发。匹配规则见 token-validation.md#吊销匹配。消费方必须按 id 幂等去重。",
+  "type": "object",
+  "required": ["id", "event", "type", "ts", "reason"],
+  "properties": {
+    "id": { "type": "string", "minLength": 1, "description": "事件唯一 ID，用于去重和断线补拉游标" },
+    "event": { "const": "auth.revoked" },
+    "type": { "type": "string", "enum": ["session", "app_session", "user", "client"] },
+    "sid": { "type": "string", "minLength": 1 },
+    "asid": { "type": "string", "minLength": 1 },
+    "sub": { "type": "string", "minLength": 1 },
+    "client_id": { "type": "string", "minLength": 1 },
+    "not_before": { "type": "integer", "description": "user/client 类型：iat 早于该时间的 token 视为吊销" },
+    "ts": { "type": "integer", "description": "事件产生时间，Unix 秒" },
+    "dc": { "type": "string", "description": "触发吊销的机房" },
+    "reason": { "type": "string", "enum": ["logout", "admin_kick", "policy_kick_oldest", "idle_timeout", "absolute_timeout", "refresh_reused", "risk", "client_disabled", "user_disabled"] }
+  },
+  "allOf": [
+    { "if": { "properties": { "type": { "const": "session" } } }, "then": { "required": ["sid"] } },
+    { "if": { "properties": { "type": { "const": "app_session" } } }, "then": { "required": ["asid"] } },
+    { "if": { "properties": { "type": { "const": "user" } } }, "then": { "required": ["sub", "not_before"] } },
+    { "if": { "properties": { "type": { "const": "client" } } }, "then": { "required": ["client_id", "not_before"] } }
+  ],
+  "additionalProperties": true,
+  "examples": [
+    { "id": "rv_01JAXA0", "event": "auth.revoked", "type": "session", "sid": "bj1.8f2c4a9e", "sub": "E10023", "ts": 1792374900, "dc": "bj1", "reason": "admin_kick" },
+    { "id": "rv_01JAXA1", "event": "auth.revoked", "type": "user", "sub": "E10023", "not_before": 1792374900, "ts": 1792374900, "reason": "user_disabled" }
+  ]
+}

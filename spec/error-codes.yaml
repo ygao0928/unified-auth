@@ -1,0 +1,81 @@
+# 统一错误码清单（只增不改）
+# 响应体格式见 schemas/error-response.schema.json
+# client_action 取值：
+#   login        - 清除本地凭证并跳转登录
+#   refresh      - 用 refresh token 刷新后重试一次，刷新失败则 login
+#   show_denied  - 提示无权限，不跳转
+#   fix_request  - 调用方请求有误，需修正后再调用（通常是开发期错误）
+#   retry        - 指数退避后重试
+version: 0.1.0
+codes:
+  # ---------- 认证（SDK / 网关返回） ----------
+  - code: AUTH_TOKEN_MISSING
+    http_status: 401
+    client_action: login
+    description: 请求未携带 Access Token
+  - code: AUTH_TOKEN_INVALID
+    http_status: 401
+    client_action: login
+    description: Token 格式错误、typ/alg 不合规、kid 未知、签名错误、必填 claims 缺失、iss 不匹配、nbf/iat 在未来
+  - code: AUTH_TOKEN_EXPIRED
+    http_status: 401
+    client_action: refresh
+    description: Token 已过期（超出 clock_skew 容差）
+  - code: AUTH_AUDIENCE_MISMATCH
+    http_status: 401
+    client_action: login
+    description: Token 的 aud 不包含本应用 client_id
+  - code: AUTH_SESSION_REVOKED
+    http_status: 401
+    client_action: login
+    description: 会话已被吊销（登出、强制下线、多端策略踢出、风控）。前端应提示"已在其他位置下线或被管理员下线"
+
+  # ---------- 授权 ----------
+  - code: PERM_DENIED
+    http_status: 403
+    client_action: show_denied
+    description: 已认证，但缺少所需权限点
+  - code: SCOPE_INSUFFICIENT
+    http_status: 403
+    client_action: fix_request
+    description: Open API 调用的 scope 不足
+
+  # ---------- 认证中心端点（登录 / 刷新流程） ----------
+  - code: AUTH_LOGIN_REQUIRED
+    http_status: 401
+    client_action: login
+    description: 刷新失败（refresh token 无效、会话绝对过期、空闲超时），需要重新登录
+  - code: AUTH_REFRESH_REUSED
+    http_status: 401
+    client_action: login
+    description: 检测到已使用过的 refresh token 被重放，整个会话链已被吊销
+  - code: AUTH_CONCURRENT_LIMIT
+    http_status: 409
+    client_action: show_denied
+    description: 多端登录策略为 limit:N 且已达上限，拒绝新登录
+  - code: AUTH_UPSTREAM_FAILED
+    http_status: 502
+    client_action: retry
+    description: 上游公司 SSO 校验失败或不可达（ticket/assertion/code 校验异常）
+  - code: AUTH_BINDING_REQUIRED
+    http_status: 401
+    client_action: fix_request
+    description: 小程序 openid 尚未绑定工号，响应中附带一次性 bind_ticket
+
+  # ---------- 通用 ----------
+  - code: INVALID_REQUEST
+    http_status: 400
+    client_action: fix_request
+    description: 参数缺失或格式错误
+  - code: NOT_FOUND
+    http_status: 404
+    client_action: fix_request
+    description: 资源不存在
+  - code: RATE_LIMITED
+    http_status: 429
+    client_action: retry
+    description: 触发限流，遵循 Retry-After 头
+  - code: AUTH_DEPENDENCY_UNAVAILABLE
+    http_status: 503
+    client_action: retry
+    description: SDK 无法获取任何可用 JWKS，或认证中心依赖组件不可用
