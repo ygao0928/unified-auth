@@ -45,7 +45,7 @@ paths:
     get:
       tags: [oidc]
       summary: 签名公钥集合
-      description: "同时包含当前密钥与轮换中的下一把/上一把密钥。响应带 `Cache-Control: max-age=600`。"
+      description: "轮换前同时包含当前密钥与下一把密钥；轮换完成后，上一把密钥继续发布 access token 最长有效期 + previous_key_buffer 秒。previous_key_buffer 为认证中心配置，整数秒，默认 60。响应带 `Cache-Control: max-age=600`。"
       security: []
       responses:
         "200":
@@ -479,11 +479,16 @@ components:
 
     RevokeRequest:
       type: object
+      description: |
+        管理员调用强制下线接口时可选的原因。`reason` 与吊销事件 `reason` 使用同一份枚举。
+        未传时默认为 `admin_kick`。
+        发布的事件 `type` 由所调用的接口决定（用户全部会话、单个全局会话或单个应用会话），与 `reason` 无关。
       properties:
         reason:
           type: string
-          enum: [admin_kick, risk, user_disabled]
+          enum: [logout, admin_kick, policy_kick_oldest, idle_timeout, absolute_timeout, refresh_reused, risk, client_disabled, user_disabled]
           default: admin_kick
+          description: 写入 auth.revoked.reason 与审计。取值与 revocation-event.schema.json 的 reason 枚举相同。
         comment: { type: string, maxLength: 256, description: 写入审计 }
 
     RevokeResult:

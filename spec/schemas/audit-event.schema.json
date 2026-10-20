@@ -53,5 +53,24 @@
     "trace_id": { "type": "string" },
     "dc": { "type": "string" }
   },
-  "additionalProperties": false
+  "additionalProperties": false,
+  "examples": [
+    {
+      "id": "ae_01JAX9Y",
+      "ts": "2026-10-19T10:00:00.123+08:00",
+      "event": "auth.login.success",
+      "actor": { "type": "user", "id": "E10023" },
+      "target": { "type": "app", "id": "meeting" },
+      "client_id": "meeting",
+      "client_type": "web",
+      "idp": "corp-cas",
+      "sid": "bj1.8f2c4a9e",
+      "ip": "10.1.2.3",
+      "ua": "...",
+      "result": "success",
+      "reason": null,
+      "trace_id": "4bf92f3577b34da6a3ce929d0e0e4736",
+      "dc": "bj1"
+    }
+  ]
 }

@@ -1,6 +1,6 @@
 # Unified Auth 契约规范（spec）
 
-本目录是统一登录鉴权平台的**机器可读契约**。认证中心、三端 SDK（Go / Python / Java）以及前端 JS SDK 都必须以这里的定义为准。设计背景见 [`docs/unified-auth-design.md`](../docs/unified-auth-design.md)。
+本目录是统一登录鉴权平台的**机器可读契约**。认证中心、三端 SDK（Go / Python / Java）以及前端 JS SDK 都必须以这里的定义为准。设计背景见 [`docs/design.md`](../docs/design.md)。
 
 - 规范版本：`0.1.0`（草案，评审前可以有不兼容变更）
 - 规范的关键字含义遵循 RFC 2119：必须（MUST）、不得（MUST NOT）、应当（SHOULD）、可以（MAY）。
@@ -23,12 +23,12 @@
 | [`token-validation.md`](token-validation.md) | **Access Token 校验算法**：SDK 必须严格按此顺序实现 |
 | [`authorization.md`](authorization.md) | 权限点匹配规则和数据范围合并规则 |
 
-## 相对于设计文档 v0.1 的修订
+## 与设计文档的对应关系
 
-制定契约的过程中，对设计文档做了以下补充，评审时需要一并确认：
+设计文档 [`docs/design.md`](../docs/design.md) 已按下列约定写回。实现以本目录和 [`conformance/`](../conformance/) 为准：
 
 1. **新增必填 claim `asid`（应用会话 ID）**：设计中支持"只踢掉某一个应用会话"，SDK 需要依据 token 中的 `asid` 来匹配 `app_session` 类型的吊销事件。
-2. **Access Token 的 JOSE 头 `typ` 必须为 `at+jwt`**（遵循 RFC 9068）：用来防止 ID Token 被冒充成 Access Token 使用。SDK 必须拒绝 `typ` 不是 `at+jwt` 的 token。
+2. **Access Token 的 JOSE 头 `typ` 必须为 `at+jwt`**（遵循 RFC 9068；也接受 `application/at+jwt`，不区分大小写）：用来防止 ID Token 被冒充成 Access Token 使用。SDK 必须拒绝其他 `typ`。
 3. **允许的签名算法限定为 `RS256` 和 `ES256`**：SDK 必须使用白名单校验算法，不得根据 token 头部声明的 `alg` 动态选择验证方式。
 4. **`aud` 可以是字符串或数组**：token exchange 场景下可能有多个受众。SDK 只要求自己的 `client_id` 包含在其中即可。
 5. **User 对象中的 `client_id` 取自 `azp`**：表示实际发起请求的客户端。

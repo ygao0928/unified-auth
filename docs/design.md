@@ -4,6 +4,7 @@
 |---|---|
 | 状态 | 草案 v0.1（待评审） |
 | 日期 | 2026-10-19 |
+| 修订 | 2026-10-20：与 spec 0.1.0、conformance 对齐 |
 | 适用范围 | 公司内 Go / FastAPI / SpringBoot 项目，以及 Web、移动 App、小程序、第三方 Open API |
 
 ---
@@ -175,22 +176,28 @@ type Identity struct {
 
 ### 5.2 Token 设计
 
-**Access Token（JWT，RS256 或 ES256）**
+**Access Token（JWT）**
+
+JOSE 头 `typ` 必须是 `at+jwt`（也接受 `application/at+jwt`，不区分大小写），用来防止 ID Token 被当成 Access Token 使用。签名算法只允许 `RS256` 和 `ES256`。SDK 按白名单校验，不得根据头部声明的 `alg` 动态选择验证方式。
 
 | claim | 必填 | 说明 |
 |---|---|---|
-| `iss` | 是 | 统一的 issuer，例如 `https://auth.corp.com`；内外网使用同一个值 |
-| `sub` | 是 | 工号 |
-| `aud` | 是 | 目标应用的 `client_id`，SDK 必须校验 |
-| `exp` / `iat` / `nbf` | 是 | 有效期，默认 10 分钟 |
+| `iss` | 是 | 统一的 issuer，例如 `https://auth.corp.com`；内外网使用同一个值。校验时必须与配置完全相等 |
+| `sub` | 是 | 用户 token 为工号；m2m token 为 `client:<client_id>` |
+| `aud` | 是 | 受众的 `client_id`，可以是字符串或字符串数组（token exchange 时可能有多个受众）。SDK 只要求本应用的 `client_id` 在其中 |
+| `exp` / `iat` | 是 | 过期时间与签发时间。用户 token 默认 10 分钟，m2m 默认 30 分钟 |
+| `nbf` | 否 | 生效时间。不出现表示立即生效 |
 | `jti` | 是 | Token 唯一 ID |
-| `sid` | 是 | 全局会话 ID，前缀带机房标识，例如 `bj1.xxxx` |
-| `azp` | 是 | 实际发起请求的客户端，在 token exchange 场景下与 `aud` 可能不同 |
-| `amr` / `auth_time` | 是 | 认证方式和认证时间 |
-| `name` / `email` / `dept_id` / `dept_name` | 否 | **有值才出现** |
-| `perm_ver` | 是 | 用户权限版本号，用于判断权限缓存是否失效 |
-| `scope` | 否 | Open API 场景使用 |
+| `sid` | 非 m2m 必填 | 全局会话 ID，前缀带机房标识，例如 `bj1.xxxx`。m2m 没有会话，不带此字段 |
+| `asid` | 非 m2m 必填 | 应用会话 ID。SDK 用它匹配只踢掉某一个应用会话的吊销事件 |
+| `azp` | 是 | 实际发起请求的客户端。token exchange 场景下可能与 `aud` 不同；SDK 输出的 `User.client_id` 取这个值 |
+| `amr` / `auth_time` | 否 | 认证方式和认证时间，有值才出现 |
+| `name` / `email` / `dept_id` / `dept_name` | 否 | **有值才出现**；空字符串视同不存在 |
+| `perm_ver` | 是 | 用户权限版本号，整数且 ≥ 0，用于判断权限缓存是否失效 |
+| `scope` | 否 | Open API 场景使用，空格分隔 |
 | `client_type` | 是 | 客户端类型：`web` / `ssr` / `app` / `miniapp` / `m2m` |
+
+不认识的 claim 一律忽略。JWT 里不放权限点。出现了的可选字段必须是正确的类型，否则视为 token 无效。
 
 **Refresh Token**：使用不透明随机串，存储在 Redis 中；每次使用后轮换，检测到旧 token 被重复使用时，吊销整个会话链。
 
@@ -207,7 +214,8 @@ type Identity struct {
 
 **密钥管理**：
 - 签名私钥存放在 KMS 或 K8s Secret 中，各机房共用同一套。
-- JWKS 同时发布当前密钥和下一把密钥；每 90 天轮换一次，旧密钥在 `access_token` 最长有效期加缓冲时间之后才下线。
+- JWKS 在轮换前同时发布当前密钥和下一把密钥。轮换完成后，上一把密钥继续发布的时长为 access token 最长有效期加上 `previous_key_buffer`。该项是认证中心配置，整数秒，默认 60（1 分钟）。按当前草案，access token 最长有效期为 m2m 的 30 分钟，因此上一把密钥默认一共继续发布 1860 秒（1800 + 60）。每 90 天轮换一次。
+- 认证中心启动时如果发现签名密钥与 `conformance/keys/` 中的测试密钥相同，必须拒绝启动。
 
 ### 5.3 会话管理
 
@@ -230,7 +238,7 @@ auth:gs:{sid}:apps               SET   app_session_id...
 auth:as:{asid}                   HASH  sid, client_id, client_type, created_at, last_active
 auth:user:{sub}:sessions         ZSET  asid -> created_at（按客户端类型分 key，用于多端计数）
 auth:rt:{refresh_hash}           HASH  asid, family_id, used
-auth:revoked:sid                 SET   最近被吊销的 sid（TTL >= access token 最长有效期）
+auth:revoked:sid                 SET   最近被吊销的 sid（TTL >= access token 最长有效期 + clock_skew，默认 1860 秒）
 ```
 
 #### 5.3.2 策略
@@ -247,26 +255,40 @@ auth:revoked:sid                 SET   最近被吊销的 sid（TTL >= access to
 
 ```json
 {
+  "id": "rv_01JAXA0",
   "event": "auth.revoked",
-  "type": "session | app_session | user | client",
-  "sid": "bj1.8f2c...",
-  "asid": "....",
+  "type": "session",
+  "sid": "bj1.8f2c4a9e",
   "sub": "E10023",
-  "client_id": "meeting",
-  "not_before": 1760860800,
-  "reason": "admin_kick | logout | policy_kick_oldest | risk",
-  "ts": 1760860801
+  "ts": 1792374900,
+  "dc": "bj1",
+  "reason": "admin_kick"
 }
 ```
 
-SDK 获取吊销事件有两种渠道，SDK 会根据网络环境自动选择：
+`id` 必填，消费方按 `id` 幂等去重。`type` 取 `session`、`app_session`、`user`、`client`：`session` 必须带 `sid`，`app_session` 必须带 `asid`，`user` 必须带 `sub` 和 `not_before`，`client` 必须带 `client_id` 和 `not_before`。`dc` 是触发吊销的机房。
+
+`reason` 共 9 种，管理端强制下线接口与吊销事件使用同一份枚举：`logout`、`admin_kick`、`policy_kick_oldest`、`idle_timeout`、`absolute_timeout`、`refresh_reused`、`risk`、`client_disabled`、`user_disabled`。请求未带 `reason` 时默认为 `admin_kick`。事件的 `type` 由调用的接口决定，与 `reason` 无关。
+
+命中任意一条即视为已吊销：
+
+| 事件 `type` | 命中条件 |
+|---|---|
+| `session` | `event.sid` 等于 `token.sid` |
+| `app_session` | `event.asid` 等于 `token.asid` |
+| `user` | `event.sub` 等于 `token.sub`，且 `token.iat` < `event.not_before` |
+| `client` | `event.client_id` 等于 `token.azp`，或出现在 `token.aud` 中；并且 `token.iat` < `event.not_before` |
+
+`user` 和 `client` 用 `not_before` 比较，因此吊销之后重新签发的 token 不受影响。例如用户被强制下线后重新登录，新 token 可以正常使用。
+
+SDK 获取吊销事件有两种渠道。配置项 `revocation.channel` 默认 `auto`，由 SDK 按网络环境选择：
 
 1. **内网**：直接订阅 MQ 或 Redis pub/sub。
 2. **公网 / 独立部署**：订阅认证中心提供的 `GET /api/v1/revocations/stream`（SSE），连接断开后使用 `GET /api/v1/revocations?since=<ts>` 补拉。
 
-SDK 在本地维护一个吊销集合，集合中每条记录的保留时间等于 access token 的最长有效期，过期后自动清理，内存占用可控。验签通过后，还要检查 token 的 `sid`、`sub`、`client_id` 是否命中吊销集合。
+SDK 在本地维护一个吊销集合。每条记录保留到 `event.ts + access token 最长有效期 + clock_skew`。最长有效期按 m2m 的 30 分钟计算，默认 1800 秒；`clock_skew` 默认 60 秒，因此默认保留 1860 秒。到点之后受影响的 token 都已自然过期，记录可以清理。
 
-**兜底**：即使事件丢失，access token 最多 10 分钟后也会过期，过期后刷新会失败。
+**兜底**：即使事件丢失，用户 access token 最多 10 分钟、m2m access token 最多 30 分钟后也会过期，过期后刷新会失败。
 
 ### 5.4 下游协议
 
@@ -430,10 +452,10 @@ erDiagram
     USER_ROLE { string emp_no  string role_id  string grant_source "manual|default|approval(预留)"  datetime expires_at }
 ```
 
-- **权限点命名**：`<app>:<resource>:<action>`，例如 `meeting:user:list`。支持通配符，例如 `*:audit:view`。
+- **权限点命名**：`<app>:<resource>:<action>`，正好 3 段，只允许小写，例如 `meeting:user:list`。通配符 `*` 只能出现在已授予的权限里，并且只匹配一整段，例如 `*:audit:view`。`permissions.yaml` 里声明的权限点不允许写通配符。
 - **全局角色**：可以包含任意应用的权限点，用于"平台管理员""审计员"这类跨应用角色。只有平台管理员可以管理全局角色。
 - **应用角色**：只能包含本应用的权限点，由该应用的管理员（`APP_ADMIN`）自行管理。
-- **数据范围**：作为角色的属性存在。值为 `null` 时表示"不适用"。用户没有部门数据时，`dept` 类范围自动降级为 `self`。
+- **数据范围**：作为角色的属性存在，从窄到宽为 `self` < `dept` < `dept_and_sub` < `all`。多个角色取最宽的一个；全部为 `null` 时结果为 `null`，由业务决定如何处理。权限接口返回的是未降级的值；结果是 `dept` 或 `dept_and_sub` 且 token 中 `dept_id` 为空时，由 SDK 降级为 `self`。
 - **默认角色**：首次登录时自动授予，作用是让"所有 SSO 用户都能登录"这个规则可以通过配置调整。
 
 ### 8.3 权限声明与同步
@@ -449,7 +471,7 @@ permissions:
     name: 导出会议纪要
 ```
 
-在 CI 流程中，或者服务启动时，通过 `PUT /api/v1/apps/{app}/permissions` 做幂等同步。代码里已经删除的权限点，在中心标记为 `deprecated`，不做物理删除。
+在 CI 流程中，或者服务启动时，通过 `PUT /api/v1/apps/{app}/permissions` 做幂等同步。代码里已经删除的权限点，在中心标记为 `deprecated`，不做物理删除。清单还可以包含格式版本、分组、敏感标记和角色模板，字段以 `spec/schemas/permissions-manifest.schema.json` 为准；上面只列出最少字段。
 
 ### 8.4 下发与缓存
 
@@ -479,22 +501,25 @@ permissions:
 
 ```json
 {
+  "id": "ae_01JAX9Y",
   "ts": "2026-10-19T10:00:00.123+08:00",
   "event": "auth.login.success",
-  "actor": "E10023",
+  "actor": {"type": "user", "id": "E10023"},
   "target": {"type": "app", "id": "meeting"},
   "client_id": "meeting",
   "client_type": "web",
   "idp": "corp-cas",
-  "sid": "bj1.8f2c...",
+  "sid": "bj1.8f2c4a9e",
   "ip": "10.1.2.3",
   "ua": "...",
   "result": "success",
   "reason": null,
-  "trace_id": "...",
+  "trace_id": "4bf92f3577b34da6a3ce929d0e0e4736",
   "dc": "bj1"
 }
 ```
+
+`actor` 是对象。`type` 取 `user` / `client` / `system` / `anonymous`，`id` 必填（工号、`client_id`、系统组件名，或匿名尝试登录时的标识）。事件 `id`、`ts`、`event`、`actor`、`result`、`trace_id`、`dc` 必填。可选字段还有 `asid` 和 `changes`（变更类事件的前后差异，写入前脱敏）。
 
 ### 9.3 合规要求
 
@@ -502,7 +527,7 @@ permissions:
 - **保存期限不少于 6 个月**，按《网络安全法》第二十一条要求；如果等保定级或公司制度有更高要求，按更高的执行。
 - 审计日志的查询权限独立授予，由"审计员"这一全局角色持有；所有查询操作本身也要记录审计。
 - **管理后台必须做二次认证**：等保三级通常要求管理员使用两种及以上的认证方式。如果上游 SSO 不支持 MFA，认证中心的管理后台需要叠加 TOTP。
-- 敏感字段（手机号、邮箱）在日志中做脱敏处理。
+- 敏感字段（手机号、邮箱）在日志中做脱敏处理。不得记录 token、密码、ticket、assertion 原文。
 
 ---
 
@@ -520,16 +545,26 @@ permissions:
 { "code": "AUTH_TOKEN_EXPIRED", "message": "access token expired", "trace_id": "..." }
 ```
 
+必填字段是 `code`、`message`、`trace_id`。可选字段：`details`、`bind_ticket`（仅 `AUTH_BINDING_REQUIRED`），以及 OAuth2 端点上额外的 `error` / `error_description`（RFC 6749）。错误码只增不改，完整清单以 `spec/error-codes.yaml` 为准。
+
 | HTTP | code | 含义 | 客户端处理 |
 |---|---|---|---|
 | 401 | `AUTH_TOKEN_MISSING` | 未携带 token | 跳转登录 |
-| 401 | `AUTH_TOKEN_INVALID` | 签名错误、格式错误或 issuer 不匹配 | 跳转登录 |
-| 401 | `AUTH_TOKEN_EXPIRED` | token 已过期 | 用 refresh token 刷新后重试 |
-| 401 | `AUTH_AUDIENCE_MISMATCH` | `aud` 不是本应用 | 跳转登录 |
-| 401 | `AUTH_SESSION_REVOKED` | 会话已被吊销 | 跳转登录，并提示"已在其他位置下线或被管理员下线" |
-| 403 | `PERM_DENIED` | 没有对应权限 | 提示无权限 |
-| 403 | `SCOPE_INSUFFICIENT` | Open API 的 scope 不足 | 第三方调整申请的 scope |
-| 503 | `AUTH_DEPENDENCY_UNAVAILABLE` | 依赖的认证组件不可用 | 退避后重试 |
+| 401 | `AUTH_TOKEN_INVALID` | 格式错误、typ/alg 不合规、kid 未知、签名错误、必填 claims 缺失或类型错误、iss 不匹配、nbf/iat 在未来 | 跳转登录 |
+| 401 | `AUTH_TOKEN_EXPIRED` | token 已过期（超出 clock_skew） | 用 refresh token 刷新后重试；刷新失败则跳转登录 |
+| 401 | `AUTH_AUDIENCE_MISMATCH` | `aud` 不包含本应用 | 跳转登录 |
+| 401 | `AUTH_SESSION_REVOKED` | 会话已被吊销（登出、强制下线、多端策略踢出、风控） | 跳转登录，并提示"已在其他位置下线或被管理员下线" |
+| 401 | `AUTH_LOGIN_REQUIRED` | 刷新失败（refresh token 无效、会话绝对过期或空闲超时） | 跳转登录 |
+| 401 | `AUTH_REFRESH_REUSED` | 已使用过的 refresh token 被重放，整个会话链已吊销 | 跳转登录 |
+| 401 | `AUTH_BINDING_REQUIRED` | 小程序 openid 尚未绑定工号，响应附带一次性 `bind_ticket` | 调用方修正请求 |
+| 403 | `PERM_DENIED` | 已认证，但没有对应权限 | 提示无权限，不跳转 |
+| 403 | `SCOPE_INSUFFICIENT` | Open API 的 scope 不足 | 调用方修正请求 |
+| 409 | `AUTH_CONCURRENT_LIMIT` | 多端策略为 `limit:N` 且已达上限，拒绝新登录 | 提示已达上限，不跳转登录 |
+| 400 | `INVALID_REQUEST` | 参数缺失或格式错误 | 调用方修正请求 |
+| 404 | `NOT_FOUND` | 资源不存在 | 调用方修正请求 |
+| 429 | `RATE_LIMITED` | 触发限流 | 遵循 `Retry-After`，退避后重试 |
+| 502 | `AUTH_UPSTREAM_FAILED` | 上游 SSO 校验失败或不可达 | 退避后重试 |
+| 503 | `AUTH_DEPENDENCY_UNAVAILABLE` | SDK 拿不到任何可用 JWKS，或认证中心依赖组件不可用 | 退避后重试 |
 
 ### 10.3 应用接入流程
 
@@ -553,12 +588,13 @@ unified_auth:
   mode: gateway | standalone              # standalone 模式下启用登录跳转和回调
   redirect_uri: https://meeting.corp.com/auth/callback
   public_paths: ["/health", "/docs/**"]
-  clock_skew: 60s
+  clock_skew: 60                          # 秒，整数；默认 60，最大 300
   revocation:
-    channel: mq | sse | none              # 默认自动选择
+    channel: auto | mq | sse | none       # 默认 auto：内网走 mq，公网或独立部署走 sse
+    retention: 1860                       # 秒；默认 = access token 最长有效期 1800 + clock_skew 60
   authz:
     enabled: true
-    cache_ttl: 5m
+    cache_ttl: 300                        # 秒，默认 300（5 分钟）
 ```
 
 ### 11.2 能力矩阵（三端必须一致）
@@ -578,20 +614,29 @@ unified_auth:
 
 ```
 User {
-  emp_no: string            // = sub
-  name?: string
-  email?: string
-  dept_id?: string
-  dept_name?: string
-  client_id: string
-  client_type: string
-  sid: string
-  scopes: string[]
-  permissions: Set<string>  // 懒加载
-  data_scope?: "self" | "dept" | "dept_and_sub" | "all"
-  has_perm(code): bool      // 支持通配符
+  emp_no: string | null       // 工号；m2m 为 null。用户 token 时等于 sub
+  subject: string             // 原始 sub。m2m 为 client:<client_id>
+  is_machine: bool            // client_type == m2m
+  name: string | null
+  email: string | null
+  dept_id: string | null
+  dept_name: string | null
+  client_id: string           // 取自 azp
+  client_type: string         // web / ssr / app / miniapp / m2m
+  sid: string | null          // m2m 为 null
+  asid: string | null         // m2m 为 null
+  scopes: string[]            // scope 按空格拆分；没有时为 []
+  perm_ver: int               // >= 0
+  amr: string[]               // 没有时为 []
+  auth_time: int | null
+  token_id: string            // = jti
+  expires_at: int             // = exp
 }
 ```
+
+字段名按各语言惯例转换（Go `EmpNo`、Python `emp_no`、Java `empNo`），语义必须一致。缺省的可选字符串在 User 里取 `null`。一致性测试要求这些字段逐项相等，包括 `null` 和空数组。
+
+权限点、数据范围和 `has_perm` 不属于这个对象。它们来自权限查询结果，由 11.2 的权限校验和数据范围接口提供。数据范围的合并与降级见 8.2。
 
 ### 11.4 前端 JS SDK（`@corp/unified-auth-js`）
 
@@ -601,7 +646,7 @@ User {
 
 ### 11.5 一致性测试
 
-仓库中维护 `conformance/` 目录，提供固定的测试用例：一组 JWKS 和若干 token（正常、过期、`aud` 错误、签名错误、`kid` 未知、已吊销、字段缺失），以及期望结果。三端 SDK 的 CI 必须全部通过这些用例。
+仓库中维护 `conformance/` 目录，提供固定的测试用例：一组 JWKS 和若干 token（正常、过期、`aud` 错误、签名错误、`kid` 未知、已吊销、字段缺失），以及期望结果。三端 SDK 的 CI 必须全部通过这些用例。覆盖范围（`typ`、算法、m2m、错误优先级等）以 `conformance/README.md` 为准。
 
 ---
 
@@ -612,7 +657,7 @@ User {
 | 可用性 | 认证中心无状态，每个机房至少 3 个实例；业务请求链路不依赖认证中心；目标 SLA 为 99.95% |
 | 性能 | SDK 每次请求的开销是一次本地验签（约 0.1 ms 级）加一次本地集合查询；权限查询结果缓存后命中率 > 99% |
 | 扩展 | 认证中心按 QPS 水平扩容；Redis 使用 Cluster 模式；项目数增加对认证中心几乎没有压力 |
-| 安全 | 强制 PKCE；`redirect_uri` 精确匹配；refresh token 轮换并检测重放；Cookie 设置 `Secure`、`HttpOnly`、`SameSite`；验证 `state` 和 `nonce`；限制允许的 JWT 算法（禁止 `none`）；上游 SAML 断言必须验签并防重放 |
+| 安全 | 强制 PKCE；`redirect_uri` 精确匹配；refresh token 轮换并检测重放；Cookie 设置 `Secure`、`HttpOnly`、`SameSite`；验证 `state` 和 `nonce`；JWT 算法只允许 `RS256` 与 `ES256`（禁止 `none` 和 `HS*`）；上游 SAML 断言必须验签并防重放 |
 | 可观测 | 暴露 Prometheus 指标（登录成功率、上游 SSO 延迟、token 签发 QPS、吊销事件延迟、SDK 版本分布）；全链路 Trace |
 
 ---
