@@ -28,8 +28,8 @@ type Checker struct {
 	Ping func(context.Context) error
 }
 
-// New 挂上健康检查、就绪检查和 JWKS。授权与令牌端点不在这个骨架里。
-func New(logger *slog.Logger, km *keys.Manager, checks []Checker) http.Handler {
+// New 挂上健康检查、就绪检查和 JWKS。mounts 用来加上授权、令牌和 discovery，且走同一套 trace 与恢复中间件。
+func New(logger *slog.Logger, km *keys.Manager, checks []Checker, mounts ...func(chi.Router)) http.Handler {
 	if logger == nil {
 		logger = slog.New(slog.NewTextHandler(io.Discard, nil))
 	}
@@ -41,6 +41,11 @@ func New(logger *slog.Logger, km *keys.Manager, checks []Checker) http.Handler {
 	r.Get("/healthz", s.health)
 	r.Get("/readyz", s.ready)
 	r.Get("/oauth2/jwks", s.jwks)
+	for _, mount := range mounts {
+		if mount != nil {
+			mount(r)
+		}
+	}
 	r.NotFound(s.notFound)
 	return r
 }
@@ -57,7 +62,7 @@ func (s *server) health(w http.ResponseWriter, r *http.Request) {
 
 func (s *server) ready(w http.ResponseWriter, r *http.Request) {
 	if len(s.checks) == 0 {
-		apierr.Write(w, http.StatusServiceUnavailable, apierr.CodeDependencyUnavailable, "dependency unavailable", traceID(r.Context()), map[string]any{"dependencies": []string{"unconfigured"}})
+		apierr.Write(w, http.StatusServiceUnavailable, apierr.CodeDependencyUnavailable, "dependency unavailable", TraceID(r.Context()), map[string]any{"dependencies": []string{"unconfigured"}})
 		return
 	}
 	ctx, cancel := context.WithTimeout(r.Context(), time.Second)
@@ -65,12 +70,12 @@ func (s *server) ready(w http.ResponseWriter, r *http.Request) {
 	var failed []string
 	for _, c := range s.checks {
 		if err := c.Ping(ctx); err != nil {
-			s.logger.Warn("readiness check failed", "dependency", c.Name, "err", err.Error(), "trace_id", traceID(r.Context()))
+			s.logger.Warn("readiness check failed", "dependency", c.Name, "err", err.Error(), "trace_id", TraceID(r.Context()))
 			failed = append(failed, c.Name)
 		}
 	}
 	if len(failed) > 0 {
-		apierr.Write(w, http.StatusServiceUnavailable, apierr.CodeDependencyUnavailable, "dependency unavailable", traceID(r.Context()), map[string]any{"dependencies": failed})
+		apierr.Write(w, http.StatusServiceUnavailable, apierr.CodeDependencyUnavailable, "dependency unavailable", TraceID(r.Context()), map[string]any{"dependencies": failed})
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ready"})
@@ -78,13 +83,13 @@ func (s *server) ready(w http.ResponseWriter, r *http.Request) {
 
 func (s *server) jwks(w http.ResponseWriter, r *http.Request) {
 	if s.keys == nil {
-		apierr.Write(w, http.StatusServiceUnavailable, apierr.CodeDependencyUnavailable, "signing keys are not loaded", traceID(r.Context()), nil)
+		apierr.Write(w, http.StatusServiceUnavailable, apierr.CodeDependencyUnavailable, "signing keys are not loaded", TraceID(r.Context()), nil)
 		return
 	}
 	body, err := s.keys.PublicJWKS()
 	if err != nil {
-		s.logger.Error("jwks", "err", err.Error(), "trace_id", traceID(r.Context()))
-		apierr.Write(w, http.StatusServiceUnavailable, apierr.CodeDependencyUnavailable, "signing keys are unavailable", traceID(r.Context()), nil)
+		s.logger.Error("jwks", "err", err.Error(), "trace_id", TraceID(r.Context()))
+		apierr.Write(w, http.StatusServiceUnavailable, apierr.CodeDependencyUnavailable, "signing keys are unavailable", TraceID(r.Context()), nil)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
@@ -94,14 +99,14 @@ func (s *server) jwks(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *server) notFound(w http.ResponseWriter, r *http.Request) {
-	apierr.Write(w, http.StatusNotFound, apierr.CodeNotFound, "not found", traceID(r.Context()), nil)
+	apierr.Write(w, http.StatusNotFound, apierr.CodeNotFound, "not found", TraceID(r.Context()), nil)
 }
 
 func (s *server) recover(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		defer func() {
 			if rec := recover(); rec != nil {
-				s.logger.Error("panic", "err", rec, "stack", string(debug.Stack()), "trace_id", traceID(r.Context()))
+				s.logger.Error("panic", "err", rec, "stack", string(debug.Stack()), "trace_id", TraceID(r.Context()))
 				// spec 没有 500 错误码。不新造 code，响应体也不回显 panic 内容。
 				http.Error(w, "internal error", http.StatusInternalServerError)
 			}
@@ -133,12 +138,13 @@ func (s *server) accessLog(next http.Handler) http.Handler {
 			"path", r.URL.Path,
 			"status", sw.status,
 			"duration_ms", time.Since(start).Milliseconds(),
-			"trace_id", traceID(r.Context()),
+			"trace_id", TraceID(r.Context()),
 		)
 	})
 }
 
-func traceID(ctx context.Context) string {
+// TraceID 返回中间件放进 context 的 trace id。授权和令牌处理函数用它填错误体。
+func TraceID(ctx context.Context) string {
 	v, _ := ctx.Value(traceKey{}).(string)
 	return v
 }

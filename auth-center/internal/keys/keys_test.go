@@ -3,9 +3,11 @@ package keys
 import (
 	"bytes"
 	"crypto/ecdsa"
+	"encoding/base64"
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/go-jose/go-jose/v4"
@@ -128,6 +130,51 @@ func TestEveryConformancePrivateKeyIsRejected(t *testing.T) {
 
 func stringsHasSuffix(s, suffix string) bool {
 	return len(s) >= len(suffix) && s[len(s)-len(suffix):] == suffix
+}
+
+func TestSignSetsTypAndKid(t *testing.T) {
+	dir := t.TempDir()
+	for _, tc := range []struct {
+		alg string
+		gen func(string) ([]byte, jose.JSONWebKey, error)
+	}{
+		{AlgRS256, func(kid string) ([]byte, jose.JSONWebKey, error) { return GenerateRSA(kid, 2048) }},
+		{AlgES256, func(kid string) ([]byte, jose.JSONWebKey, error) { return GenerateES256(kid) }},
+	} {
+		pemBytes, _, err := tc.gen("kid-" + tc.alg)
+		if err != nil {
+			t.Fatal(err)
+		}
+		path := filepath.Join(dir, tc.alg+".pem")
+		if err := os.WriteFile(path, pemBytes, 0o600); err != nil {
+			t.Fatal(err)
+		}
+		mgr, err := LoadFiles([]Input{{Alg: tc.alg, PEMFile: path, Role: RoleActive}})
+		if err != nil {
+			t.Fatal(err)
+		}
+		raw, err := mgr.Sign(map[string]any{"iss": "https://auth.example.com", "exp": int64(10)}, "at+jwt")
+		if err != nil {
+			t.Fatal(err)
+		}
+		headerJSON, err := base64.RawURLEncoding.DecodeString(strings.Split(raw, ".")[0])
+		if err != nil {
+			t.Fatal(err)
+		}
+		var header map[string]any
+		if err := json.Unmarshal(headerJSON, &header); err != nil {
+			t.Fatal(err)
+		}
+		if header["typ"] != "at+jwt" || header["alg"] != tc.alg || header["kid"] != "kid-"+tc.alg {
+			t.Fatalf("%s header %#v", tc.alg, header)
+		}
+		if mgr.ActiveAlgorithm() != tc.alg {
+			t.Fatal(mgr.ActiveAlgorithm())
+		}
+	}
+	if _, err := (&Manager{}).Sign(map[string]any{}, ""); err == nil {
+		t.Fatal("empty typ")
+	}
 }
 
 func TestRejectsSmallRSAAndBadAlg(t *testing.T) {

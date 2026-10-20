@@ -31,6 +31,11 @@ jobs:
         with:
           go-version-file: auth-center/go.mod
           cache-dependency-path: auth-center/go.sum
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: token validator
+        run: python3 -m pip install PyJWT cryptography
       - name: build
         working-directory: auth-center
         run: go build ./...
@@ -41,4 +46,4 @@ jobs:
         working-directory: auth-center
         env:
           AUTH_CENTER_TEST_DSN: postgres://auth:auth@localhost:5432/auth?sslmode=disable
-        run: go test -count=1 ./...
+        run: go test -race -count=1 ./...
