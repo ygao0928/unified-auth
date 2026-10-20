@@ -27,7 +27,7 @@ func TestCodesExistInSpec(t *testing.T) {
 	for _, c := range doc.Codes {
 		have[c.Code] = true
 	}
-	for _, code := range []string{CodeDependencyUnavailable, CodeNotFound} {
+	for _, code := range []string{CodeDependencyUnavailable, CodeNotFound, CodeInvalidRequest, CodeLoginRequired, CodeRefreshReused, CodeUpstreamFailed} {
 		if !have[code] {
 			t.Fatalf("code %s missing from spec", code)
 		}

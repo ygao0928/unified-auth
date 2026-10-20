@@ -192,6 +192,32 @@ func kidFromPEM(raw []byte) string {
 	return ""
 }
 
+// ActiveAlgorithm 是当前签名密钥的算法，RS256 或 ES256。
+func (m *Manager) ActiveAlgorithm() string {
+	return m.active.Algorithm
+}
+
+// Sign 用 active 私钥签 JWT。typ 写入头，例如 at+jwt。只签 active，不使用 next。
+func (m *Manager) Sign(claims map[string]any, typ string) (string, error) {
+	if typ == "" {
+		return "", errors.New("typ is required")
+	}
+	payload, err := json.Marshal(claims)
+	if err != nil {
+		return "", err
+	}
+	opts := (&jose.SignerOptions{}).WithType(jose.ContentType(typ))
+	signer, err := jose.NewSigner(jose.SigningKey{Algorithm: jose.SignatureAlgorithm(m.active.Algorithm), Key: m.active}, opts)
+	if err != nil {
+		return "", err
+	}
+	signed, err := signer.Sign(payload)
+	if err != nil {
+		return "", err
+	}
+	return signed.CompactSerialize()
+}
+
 // PublicJWKS 返回当前要发布的公钥集合。轮换调度不在本骨架里；若配置了 next，会和 active 一起发布。
 func (m *Manager) PublicJWKS() ([]byte, error) {
 	set := jose.JSONWebKeySet{Keys: []jose.JSONWebKey{publicOf(m.active)}}
@@ -288,6 +314,32 @@ func samePublic(a, b any) bool {
 	default:
 		return false
 	}
+}
+
+// GenerateES256 生成开发用 P-256 私钥。PEM 首行写 `# kid:`。
+func GenerateES256(kid string) (pemBytes []byte, jwk jose.JSONWebKey, err error) {
+	if kid == "" {
+		var buf [4]byte
+		if _, err := rand.Read(buf[:]); err != nil {
+			return nil, jose.JSONWebKey{}, err
+		}
+		kid = fmt.Sprintf("dev-%x", buf[:])
+	}
+	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	if err != nil {
+		return nil, jose.JSONWebKey{}, err
+	}
+	der, err := x509.MarshalPKCS8PrivateKey(key)
+	if err != nil {
+		return nil, jose.JSONWebKey{}, err
+	}
+	body := pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: der})
+	pemBytes = append([]byte("# kid: "+kid+"\n"), body...)
+	jwk = jose.JSONWebKey{Key: key, KeyID: kid, Algorithm: AlgES256, Use: "sig"}
+	if err := Check(jwk); err != nil {
+		return nil, jose.JSONWebKey{}, err
+	}
+	return pemBytes, jwk, nil
 }
 
 // GenerateRSA 生成开发用 RSA 私钥。PEM 首行写 `# kid:`，方便容器只挂一个文件。

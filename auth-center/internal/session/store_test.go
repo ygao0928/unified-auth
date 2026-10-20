@@ -110,3 +110,86 @@ func TestRejectsEmptyIDsAndNonPositiveTTL(t *testing.T) {
 		t.Fatal("zero ttl")
 	}
 }
+
+func TestRefreshConsumeKeepsTTLAndRevokeChain(t *testing.T) {
+	ctx := context.Background()
+	store, mr := newStore(t)
+	gs := GlobalSession{SID: "bj1.abc", Sub: "E1", IDP: "corp", CreatedAt: 10, LastActive: 10, AbsExp: 500}
+	if err := store.PutGlobal(ctx, gs); err != nil {
+		t.Fatal(err)
+	}
+	as := AppSession{ASID: "as.1", SID: gs.SID, ClientID: "meeting", ClientType: "web", CreatedAt: 10, LastActive: 10}
+	if err := store.PutApp(ctx, as); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.PutUserSession(ctx, gs.Sub, as.ASID, 10); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.PutLoginMeta(ctx, gs.SID, LoginMeta{AuthTime: 10, AMR: []string{"pwd"}}); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.PutAuthMeta(ctx, as.ASID, AuthMeta{AuthTime: 10, AMR: []string{"pwd"}, Scope: "openid"}); err != nil {
+		t.Fatal(err)
+	}
+	ttl := 50 * time.Second
+	rt := Refresh{Hash: "h1", ASID: as.ASID, FamilyID: "fam"}
+	if err := store.PutRefresh(ctx, rt, ttl); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.PutRefresh(ctx, Refresh{Hash: "h2", ASID: as.ASID, FamilyID: "fam"}, ttl); err != nil {
+		t.Fatal(err)
+	}
+	mr.FastForward(5 * time.Second)
+	got, consumed, err := store.ConsumeRefresh(ctx, "h1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got != ConsumeOK || consumed.ASID != as.ASID || consumed.FamilyID != "fam" {
+		t.Fatalf("consume %d %+v", got, consumed)
+	}
+	if mr.TTL(RefreshKey("h1")) != 45*time.Second {
+		t.Fatalf("ttl extended: %s", mr.TTL(RefreshKey("h1")))
+	}
+	again, _, err := store.ConsumeRefresh(ctx, "h1")
+	if err != nil || again != ConsumeReused {
+		t.Fatalf("reuse %d %v", again, err)
+	}
+	missing, _, err := store.ConsumeRefresh(ctx, "missing")
+	if err != nil || missing != ConsumeMissing {
+		t.Fatalf("missing %d %v", missing, err)
+	}
+	if err := store.Touch(ctx, gs.SID, as.ASID, 99); err != nil {
+		t.Fatal(err)
+	}
+	touched, err := store.GetApp(ctx, as.ASID)
+	if err != nil || touched.LastActive != 99 {
+		t.Fatalf("touch %+v %v", touched, err)
+	}
+	txn := AuthTxn{ID: "tx1", ClientID: "meeting", RedirectURI: "https://app.example/cb", State: "state-state-state", CodeChallenge: "c", Scope: "openid", IDPID: "corp"}
+	if err := store.PutTxn(ctx, txn, time.Minute); err != nil {
+		t.Fatal(err)
+	}
+	taken, err := store.TakeTxn(ctx, "tx1")
+	if err != nil || taken.State != txn.State || taken.IDPID != "corp" {
+		t.Fatalf("%+v %v", taken, err)
+	}
+	if _, err := store.TakeTxn(ctx, "tx1"); err != ErrNotFound {
+		t.Fatalf("txn replay %v", err)
+	}
+	if err := store.RevokeChain(ctx, gs.SID, time.Minute); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := store.GetGlobal(ctx, gs.SID); err != ErrNotFound {
+		t.Fatal(err)
+	}
+	if _, err := store.GetRefresh(ctx, "h2"); err != ErrNotFound {
+		t.Fatal("family refresh survived")
+	}
+	if mr.Exists(AuthMetaKey(as.ASID)) || mr.Exists(LoginMetaKey(gs.SID)) || mr.Exists(AppKey(as.ASID)) {
+		t.Fatal("session keys survived revoke")
+	}
+	revoked, err := store.IsSIDRevoked(ctx, gs.SID)
+	if err != nil || !revoked {
+		t.Fatal(revoked, err)
+	}
+}

@@ -1,5 +1,5 @@
 -- 客户端注册、用户和上游身份源。权限表属于 P5。
--- secret_hash 只存哈希，算法尚未决定。明文 secret 不入库。
+-- secret_hash 存 bcrypt。明文 secret 不入库。
 
 CREATE TABLE clients (
     client_id TEXT PRIMARY KEY,

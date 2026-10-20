@@ -1,4 +1,6 @@
-# 本地示例。生产密钥不要写进仓库。全局默认有效期不在这个文件里，见 internal/config/lifetimes.go。
+# 本地示例。生产密钥不要写进仓库。
+# 下面的有效期是设计 §5.2 的全局默认。删掉某一项时进程仍使用同一数字。
+# 客户端 session_policy 里写了的项优先于这里。access token 还会被 access_token_ttl_cap 截断。
 issuer: http://localhost:8080
 dc: local
 http:
@@ -10,9 +12,32 @@ redis:
 access_token_ttl_cap: 1800
 previous_key_buffer: 60
 clock_skew: 60
+user_access_token_ttl: 600
+m2m_access_token_ttl: 1800
+refresh_token_ttl: 600
+web_idle_timeout: 7200
+web_absolute_session_ttl: 43200
+app_idle_timeout: 604800
+app_absolute_session_ttl: 2592000
+auth_code_ttl: 60
+authorize_txn_ttl: 600
 log:
   level: info
 keys:
   - alg: RS256
     pem_file: .dev-keys/active.pem
     role: active
+# 上游 OIDC。不配时进程仍能启动；需要登录的 /oauth2/authorize 会返回 temporarily_unavailable。
+# 环境变量 AUTH_CENTER_IDP_ID 会替换整个 idps 列表。
+# idps:
+#   - id: corp-oidc
+#     protocol: OIDC
+#     issuer: https://idp.example.com
+#     client_id: auth-center
+#     client_secret: replace-me
+#     redirect_url: http://localhost:8080/idp/corp-oidc/callback
+#     scopes: [openid]
+#     attribute_mapping:
+#       emp_no: employeeNumber
+#       name: name
+#       email: email
