@@ -1,6 +1,6 @@
 # 开发任务分解
 
-本清单只拆 [`design.md`](design.md) §13 已经排进各阶段的工作，以及 [`spec/`](../spec/README.md)、[`conformance/`](../conformance/README.md) 里已经写明的验收条件。阶段日历以设计文档为准。表中的「人日」是单项工作量；同一阶段里可以并行，关键路径单独写在文末。未在 §14 决定的选型（Gin 或 Chi、PostgreSQL 或 MySQL、ES 或 ClickHouse、Vue3 或 React 等）任务里不代选。P1 上游适配已定为 OIDC，CAS 与 SAML 2.0 在 P6。
+本清单只拆 [`design.md`](design.md) §13 已经排进各阶段的工作，以及 [`spec/`](../spec/README.md)、[`conformance/`](../conformance/README.md) 里已经写明的验收条件。阶段日历以设计文档为准。表中的「人日」是单项工作量；同一阶段里可以并行，关键路径单独写在文末。未在 §14 决定的选型（ES 或 ClickHouse、Vue3 或 React 等）任务里不代选。HTTP 框架已定为 Chi，配置库已定为 PostgreSQL。P1 上游适配已定为 OIDC，CAS 与 SAML 2.0 在 P6。
 
 P0 的契约文件在仓库里已有草案。下面仍把它们列为 P0 任务，方便对照验收，不表示要推倒重写。
 
@@ -23,8 +23,8 @@ P0 的契约文件在仓库里已有草案。下面仍把它们列为 P0 任务�
 
 | ID | 标题 | 说明 | 依赖 | 人日 | 交付 / 验收 |
 |---|---|---|---|---|---|
-| P1-INF-01 | 会话 Redis 与配置库 | 按 §5.3.1 落 Redis 键。配置与用户落在 PostgreSQL 或 MySQL，二者不代选 | — | 3 | 全局会话、应用会话、refresh token 可按键读写。`auth:rt` 的 TTL 等于该客户端的 `refresh_token_ttl` |
-| P1-AC-01 | Go 服务骨架 | Go 1.23+。HTTP 框架用 Gin 或 Chi，不代选 | — | 2 | 进程可启动，健康检查可用 |
+| P1-INF-01 | 会话 Redis 与配置库 | 按 §5.3.1 落 Redis 键。配置与用户落在 PostgreSQL | — | 3 | 全局会话、应用会话、refresh token 可按键读写。`auth:rt` 的 TTL 等于该客户端的 `refresh_token_ttl` |
+| P1-AC-01 | Go 服务骨架 | Go 1.23+，HTTP 框架用 Chi（兼容 net/http） | — | 2 | 进程可启动，健康检查可用 |
 | P1-AC-02 | 上游可插拔层与 OIDC 适配 | `IdentityProvider` 接口。P1 实现 OIDC 上游适配，使试点能登录。CAS 与 SAML 2.0 仍是必做范围，见 P6-AC-01、P6-AC-02 | P1-AC-01 | 6 | 用 OIDC 上游完成登录跳转与回调，得到 `Identity`（工号必填） |
 | P1-AC-03 | 属性映射与用户落库 | 每个身份源一份 `attribute_mapping`。首次登录按工号建用户并给默认角色；空属性不覆盖已有值 | P1-AC-02 | 2 | 缺属性时登录仍成功 |
 | P1-AC-04 | 授权码、PKCE 与刷新 | `authorize`（只接受 S256）、`token` 的 authorization_code 与 refresh_token。refresh 每次轮换，新 token 从轮换当时起重新计算 `refresh_token_ttl`。重放旧 token 吊销整条会话链并返回 `AUTH_REFRESH_REUSED` | P1-AC-01、P1-INF-01 | 5 | 试点浏览器能走完授权码。连续刷新时，每次得到的 refresh token 都重新计算有效期 |
@@ -166,8 +166,6 @@ flowchart LR
 
 | 编号 | 事项 | 出处 |
 |---|---|---|
-| — | HTTP 框架 Gin 或 Chi | §4.2 |
-| — | PostgreSQL 或 MySQL | §4.2 |
 | — | 审计落 ES 或 ClickHouse | §4.2 |
 | — | 管理后台 Vue3 或 React | §4.2 |
 | D3 | 下游 SAML 与 CAS 谁先做 | §14 |

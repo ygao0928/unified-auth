@@ -80,7 +80,7 @@ flowchart TB
 
     subgraph Infra["基础设施"]
         RDS[(Redis<br/>会话 / 吊销 / 事件流, 每机房)]
-        DB[(PostgreSQL/MySQL<br/>配置 / 权限)]
+        DB[(PostgreSQL<br/>配置 / 权限)]
         LOG[(ES / ClickHouse<br/>审计)]
     end
 
@@ -127,13 +127,13 @@ flowchart TB
 
 | 组件 | 选型 |
 |---|---|
-| 语言 / 框架 | Go 1.23+，HTTP 框架用 Gin 或 Chi |
+| 语言 / 框架 | Go 1.23+，HTTP 框架用 Chi（兼容 net/http） |
 | OIDC Provider | `github.com/zitadel/oidc/v3`（OpenID 认证实现）；备选 `ory/fosite` |
 | 上游 OIDC | `github.com/coreos/go-oidc/v3` |
 | SAML（上游 SP / 下游 IdP） | `github.com/crewjam/saml` |
 | CAS（上游客户端 / 下游 Server） | 自研。协议面很小：`/login`、`/serviceValidate`、`/p3/serviceValidate`、`/logout` |
 | JWT / JWK | `github.com/go-jose/go-jose/v4` |
-| 存储 | PostgreSQL 或 MySQL（配置、权限）；Redis（会话、吊销集合、事件流） |
+| 存储 | PostgreSQL（配置、权限）；Redis（会话、吊销集合、事件流） |
 | 事件 | 可插拔事件通道。首期用 Redis Streams；预定替代是 Kafka |
 | 审计 | 异步写入 ES 或 ClickHouse |
 | 管理后台前端 | Vue3 或 React，作为认证中心内置的一个 OIDC 客户端 |
