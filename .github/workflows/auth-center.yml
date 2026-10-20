@@ -1,0 +1,44 @@
+name: auth-center
+on:
+  push:
+    paths:
+      - "auth-center/**"
+      - ".github/workflows/auth-center.yml"
+  pull_request:
+    paths:
+      - "auth-center/**"
+      - ".github/workflows/auth-center.yml"
+jobs:
+  go:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: auth
+          POSTGRES_PASSWORD: auth
+          POSTGRES_DB: auth
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U auth -d auth"
+          --health-interval 2s
+          --health-timeout 5s
+          --health-retries 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: auth-center/go.mod
+          cache-dependency-path: auth-center/go.sum
+      - name: build
+        working-directory: auth-center
+        run: go build ./...
+      - name: vet
+        working-directory: auth-center
+        run: go vet ./...
+      - name: test
+        working-directory: auth-center
+        env:
+          AUTH_CENTER_TEST_DSN: postgres://auth:auth@localhost:5432/auth?sslmode=disable
+        run: go test -count=1 ./...
