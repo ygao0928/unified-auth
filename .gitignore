@@ -1,4 +1,6 @@
 auth-center/bin/
 auth-center/.dev-keys/
+admin-ui/node_modules/
+admin-ui/dist/
 **/__pycache__/
 *.pyc
