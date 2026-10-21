@@ -1,6 +1,6 @@
 # 试点登录
 
-试点项目按这篇文档配置认证中心、注册客户端，并走完 OIDC 授权码登录。管理后台页面还没有：前端用 Vue3 还是 React 尚未决定，注册走下面的 HTTP API。
+试点项目按这篇文档配置认证中心、注册客户端，并走完 OIDC 授权码登录。应用注册页面在 [`admin-ui/`](../admin-ui/README.md)，用 React、TypeScript、Vite 和 Ant Design。也可以直接调用下面的 HTTP API。
 
 ## 认证中心
 
@@ -19,7 +19,7 @@ make build
 
 ## OIDC 上游
 
-P1 只接 OIDC。CAS 和 SAML 在 P6。只配一个身份源时，`/oauth2/authorize` 会直接跳过去。多个身份源时必须带 `idp_hint`，否则返回 `invalid_request`。还没有身份源选择页。
+P1 只接 OIDC。CAS 和 SAML 在 P6。只配一个身份源时，`/oauth2/authorize` 会直接跳过去。多个身份源时必须带 `idp_hint`，否则返回 `invalid_request`。选择页属于授权端点，还没有做，也不在管理后台里。
 
 YAML：
 
@@ -109,7 +109,7 @@ curl -sS https://auth.example.com/oauth2/token \
 
 ## 这一阶段没有
 
-- 管理后台页面（Vue3 或 React 未选）
+- 多身份源选择页（属于 `/oauth2/authorize`，不是应用注册页面）
 - `client_credentials`、token exchange、`private_key_jwt`
 - CAS / SAML 上游
 - 管理员二次认证

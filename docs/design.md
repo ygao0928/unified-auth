@@ -136,7 +136,7 @@ flowchart TB
 | 存储 | PostgreSQL（配置、权限）；Redis（会话、吊销集合、事件流） |
 | 事件 | 可插拔事件通道。首期用 Redis Streams；预定替代是 Kafka |
 | 审计 | 异步写入 ES 或 ClickHouse |
-| 管理后台前端 | Vue3 或 React，作为认证中心内置的一个 OIDC 客户端 |
+| 管理后台前端 | React（TypeScript + Vite），组件库 Ant Design。页面在 `admin-ui/`。P1 用引导令牌调用 Admin API |
 
 ---
 
@@ -171,7 +171,7 @@ type Identity struct {
 
 - **三种上游都要做**：CAS、SAML 2.0、OIDC 都是必交付的适配器，挂在上面的接口上。P1 先实现 OIDC 上游适配，CAS 和 SAML 2.0 在 P6 补齐。以后可以再加其他协议，但不能因此少做这三种。
 - **属性映射可配置**：每个身份源配置一份 `attribute_mapping`，例如 CAS 返回的 `employeeNumber` 映射到 `EmpNo`，SAML 的 `urn:oid:...` 映射到 `Email`。
-- **多身份源并存**：只配置了一个身份源时直接跳转；配置了多个时，在认证中心的登录页提供选择，或者由客户端通过 `idp_hint` 参数指定。
+- **多身份源并存**：只配置了一个身份源时直接跳转；配置了多个时，在认证中心的登录页提供选择，或者由客户端通过 `idp_hint` 参数指定。选择页还没有做，它属于授权端点，不在管理后台的应用注册页面里。多个身份源且没有 `idp_hint` 时仍返回 `invalid_request`。
 - **用户落库**：首次登录时以工号为键自动创建用户，并授予只读基础角色 `default:viewer`（全局角色，`data_scope` 为 `self`）。只在真正插入新用户时授予，之后的登录不补授。之后每次登录刷新可选属性。属性为空时不覆盖已有值。
 
 ### 5.2 Token 设计
@@ -595,7 +595,7 @@ P1 把通过 schema 检查的事件追加进 PostgreSQL 表 `audit_events`。登
 
 ### 10.3 应用接入流程
 
-1. 注册应用，获得 `client_id` 和 `client_secret`，并配置回调地址、客户端类型、会话策略。P1 的注册入口是 `POST /api/v1/apps`（见 `docs/pilot-login.md`）。管理后台页面仍待选定 Vue3 或 React，不在这一步里代选。
+1. 注册应用，获得 `client_id` 和 `client_secret`，并配置回调地址、客户端类型、会话策略。可以调用 `POST /api/v1/apps`，也可以打开 `admin-ui/` 里的 React 页面（见 `docs/pilot-login.md`）。
 2. 引入对应语言的 SDK，填写配置。
 3. 在仓库中提交 `permissions.yaml`，并接入 CI 同步。
 4. 运行 SDK 自带的一致性自检命令，例如 `unified-auth doctor`，检查连通性、JWKS 可用性和时钟偏差。
@@ -723,3 +723,4 @@ User {
 | D6 | 默认角色 id | — | 已决定：`default:viewer`，全局只读，`data_scope` 为 `self`。仅首次插入用户时授予 |
 | D7 | 签名私钥存放 | — | 已决定：P1 从 PEM 文件或 Kubernetes Secret 挂载路径读取。KMS 延后到 P7 |
 | D8 | 公开客户端 | — | 已决定：无密钥的 web / app / miniapp 在 PKCE S256 下可以不认证调用 `authorization_code` 与 `refresh_token`。ssr、m2m 以及配置了密钥的客户端必须认证。公开客户端的 refresh 仍轮换并检测重放 |
+| D9 | 管理后台前端 | — | 已决定：React、TypeScript、Vite，组件库 Ant Design。应用注册页面在 `admin-ui/`，P1 用引导令牌调用 `/api/v1/apps`。多身份源选择页属于授权端点，还没有做 |

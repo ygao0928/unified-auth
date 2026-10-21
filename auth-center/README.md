@@ -12,7 +12,7 @@
 - **P1-AC-05** `/.well-known/openid-configuration` 与 `GET /oauth2/jwks`（`Cache-Control: max-age=600`）。启动时拒绝 `conformance/keys` 里的测试密钥。access token 使用客户端覆盖，否则用配置里的全局默认，并截断到 `access_token_ttl_cap`。
 - **P1-AC-06** 刷新时同时检查空闲超时、绝对时长和当前 refresh token 的 TTL，先到期者返回 `AUTH_LOGIN_REQUIRED`。
 - **P1-AC-07** 上游登录成功和失败按 `audit-event.schema.json` 追加进 PostgreSQL `audit_events`。不记录 token、密码、邮箱或姓名。写审计失败不拒绝登录。ES 或 ClickHouse 仍不代选。
-- **P1-ADM-01** `POST/GET/PATCH /api/v1/apps` 与 `POST /api/v1/apps/{client_id}/secret`。密钥 bcrypt 入库，只在注册和轮换时返回一次。未填的有效期等于 §5.2 全局默认。管理页面未做，Vue3 或 React 仍不代选。
+- **P1-ADM-01** `POST/GET/PATCH /api/v1/apps` 与 `POST /api/v1/apps/{client_id}/secret`。密钥 bcrypt 入库，只在注册和轮换时返回一次。未填的有效期等于 §5.2 全局默认。页面在 [`admin-ui/`](../admin-ui/README.md)，React + TypeScript + Vite + Ant Design。
 - **P1-DOC-01** 试点登录说明在 [`docs/pilot-login.md`](../docs/pilot-login.md)。
 - **P4-BUS-01** `EventBus` 接口和本机房 Redis Stream 的 XADD / XRANGE。没有保留期裁剪，也没有写到其他机房。
 
@@ -25,7 +25,7 @@
 
 refresh token 重放在吊销整条链之后再发布 `auth.revoked`（`type=session`，`reason=refresh_reused`）。P4-AC-04 的上游登出、SAML / CAS 以及管理端踢下线还没做。
 
-试点可以通过文档里的 API 注册客户端并完成 OIDC 登录。管理后台页面还没有，因为前端框架未选。`client_credentials`、token exchange、CAS / SAML 不在本服务里。内省的「仅内网」没有在进程里做网络限制。
+试点可以通过文档里的 API 或 `admin-ui/` 注册客户端并完成 OIDC 登录。`client_credentials`、token exchange、CAS / SAML 不在本服务里。内省的「仅内网」没有在进程里做网络限制。多身份源选择页还没有做。
 
 ## 本地
 
