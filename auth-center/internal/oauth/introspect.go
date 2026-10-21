@@ -19,7 +19,7 @@ func (h *Handler) introspect(w http.ResponseWriter, r *http.Request) {
 	client, ok := h.authenticateConfidential(r)
 	if !ok {
 		w.Header().Set("WWW-Authenticate", `Basic realm="auth-center"`)
-		h.writeErr(w, r, http.StatusUnauthorized, apierr.CodeInvalidRequest, "client authentication failed", "invalid_client")
+		h.writeErr(w, r, http.StatusUnauthorized, apierr.CodeInvalidClient, "client authentication failed", "invalid_client")
 		return
 	}
 	raw := r.PostFormValue("token")

@@ -12,6 +12,10 @@ const (
 	CodeNotFound = "NOT_FOUND"
 	// CodeInvalidRequest 对应 spec/error-codes.yaml。
 	CodeInvalidRequest = "INVALID_REQUEST"
+	// CodeInvalidClient 对应 spec/error-codes.yaml。仅用于客户端认证失败。
+	CodeInvalidClient = "INVALID_CLIENT"
+	// CodeInternalError 对应 spec/error-codes.yaml。
+	CodeInternalError = "INTERNAL_ERROR"
 	// CodeLoginRequired 对应 spec/error-codes.yaml。
 	CodeLoginRequired = "AUTH_LOGIN_REQUIRED"
 	// CodeRefreshReused 对应 spec/error-codes.yaml。

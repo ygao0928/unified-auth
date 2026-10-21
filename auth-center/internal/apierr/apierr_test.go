@@ -17,20 +17,24 @@ func TestCodesExistInSpec(t *testing.T) {
 	}
 	var doc struct {
 		Codes []struct {
-			Code string `yaml:"code"`
+			Code   string `yaml:"code"`
+			Status int    `yaml:"http_status"`
 		} `yaml:"codes"`
 	}
 	if err := yaml.Unmarshal(raw, &doc); err != nil {
 		t.Fatal(err)
 	}
-	have := map[string]bool{}
+	have := map[string]int{}
 	for _, c := range doc.Codes {
-		have[c.Code] = true
+		have[c.Code] = c.Status
 	}
-	for _, code := range []string{CodeDependencyUnavailable, CodeNotFound, CodeInvalidRequest, CodeLoginRequired, CodeRefreshReused, CodeUpstreamFailed} {
-		if !have[code] {
+	for _, code := range []string{CodeDependencyUnavailable, CodeNotFound, CodeInvalidRequest, CodeInvalidClient, CodeInternalError, CodeLoginRequired, CodeRefreshReused, CodeUpstreamFailed} {
+		if _, ok := have[code]; !ok {
 			t.Fatalf("code %s missing from spec", code)
 		}
+	}
+	if have[CodeInvalidRequest] != http.StatusBadRequest || have[CodeInvalidClient] != http.StatusUnauthorized || have[CodeInternalError] != http.StatusInternalServerError {
+		t.Fatalf("status %#v", have)
 	}
 }
 

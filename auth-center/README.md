@@ -54,6 +54,6 @@ make keygen
 
 上游只实现 OIDC。一个身份源时直接跳转。多个身份源且没有 `idp_hint` 时返回选择页，授权事务先保存，选定后再绑定并跳转；`idp_hint` 命中则跳过选择页。`display_name` 为空时选择页显示身份源 id。回调路径是 `/idp/{id}/callback`。
 
-令牌端点接受 `client_secret_basic` 和 `client_secret_post`。`client_secret` 以 bcrypt 保存。没有密钥的 web、app、miniapp 在 `authorization_code` 和 `refresh_token` 上只交 `client_id`。交了密钥就必须匹配，否则 `invalid_client`。ssr 和 m2m 即使没配密钥也不能免认证。refresh token 在 Redis 里的键是原始值的 SHA-256 十六进制，不是原始 token。
+令牌端点接受 `client_secret_basic` 和 `client_secret_post`。`client_secret` 以 bcrypt 保存。没有密钥的 web、app、miniapp 在 `authorization_code` 和 `refresh_token` 上只交 `client_id`。交了密钥就必须匹配，否则 HTTP 401、`code=INVALID_CLIENT`、OAuth `error=invalid_client`。ssr 和 m2m 即使没配密钥也不能免认证。授权码默认 60 秒，授权事务默认 600 秒，由 `auth_code_ttl` 与 `authorize_txn_ttl` 配置。refresh token 在 Redis 里的键是原始值的 SHA-256 十六进制，不是原始 token。进程内部错误返回 HTTP 500、`code=INTERNAL_ERROR`，响应体不带内部细节。`/healthz` 与 `/readyz` 不需要认证。
 
 新用户第一次登录获得角色 `default:viewer`。删掉这条绑定后，再次登录不会再授。

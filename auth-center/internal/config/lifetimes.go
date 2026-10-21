@@ -18,7 +18,7 @@ const (
 	DefaultAppIdleTimeout        = 604800
 	DefaultAppAbsoluteSessionTTL = 2592000
 
-	// 授权码和授权事务的存活时间不在规范里。这是实现采用的默认秒数。
+	// 授权码和授权事务是进程配置，不能按客户端覆盖。默认值见设计 §5.2。
 	DefaultAuthCodeTTL     = 60
 	DefaultAuthorizeTxnTTL = 600
 )

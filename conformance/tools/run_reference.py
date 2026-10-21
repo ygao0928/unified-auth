@@ -113,6 +113,32 @@ def check_schema_examples() -> int:
     return n
 
 
+ALLOWED_CLIENT_ACTIONS = {"login", "refresh", "show_denied", "fix_request", "retry"}
+
+
+def check_error_codes() -> int:
+    doc = yaml.safe_load((SPEC / "error-codes.yaml").read_text(encoding="utf-8"))
+    codes = doc.get("codes") or []
+    seen: set[str] = set()
+    by: dict[str, dict] = {}
+    for item in codes:
+        code = item.get("code")
+        check(isinstance(code, str) and code not in seen, f"error code duplicate or missing: {code}")
+        if isinstance(code, str):
+            seen.add(code)
+            by[code] = item
+        check(isinstance(item.get("http_status"), int), f"[{code}] http_status")
+        check(item.get("client_action") in ALLOWED_CLIENT_ACTIONS, f"[{code}] client_action {item.get('client_action')}")
+        description = item.get("description")
+        check(isinstance(description, str) and description.strip() != "", f"[{code}] description")
+    check(by.get("INVALID_REQUEST", {}).get("http_status") == 400, "INVALID_REQUEST must stay HTTP 400")
+    check(by.get("INVALID_CLIENT", {}).get("http_status") == 401, "INVALID_CLIENT must be HTTP 401")
+    check(by.get("INVALID_CLIENT", {}).get("client_action") == "fix_request", "INVALID_CLIENT client_action")
+    check(by.get("INTERNAL_ERROR", {}).get("http_status") == 500, "INTERNAL_ERROR must be HTTP 500")
+    check(by.get("INTERNAL_ERROR", {}).get("client_action") == "retry", "INTERNAL_ERROR client_action")
+    return len(codes)
+
+
 def check_openapi() -> str:
     try:
         from openapi_spec_validator import validate
@@ -133,8 +159,9 @@ def main() -> int:
     t = run_token_cases()
     a = run_authz_cases()
     s = check_schema_examples()
+    e = check_error_codes()
     o = check_openapi()
-    print(f"token cases: {t}  authz cases: {a}  schema examples: {s}  openapi: {o}")
+    print(f"token cases: {t}  authz cases: {a}  schema examples: {s}  error codes: {e}  openapi: {o}")
     if failures:
         print(f"\n{len(failures)} FAILURE(S):")
         for f in failures:
