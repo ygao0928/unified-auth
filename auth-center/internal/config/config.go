@@ -65,6 +65,7 @@ type Config struct {
 	AuthCodeTTL           int
 	AuthorizeTxnTTL       int
 	LogLevel              string
+	AdminToken            string
 	Keys                  []KeyFile
 	IDPs                  []IdentityProviderConfig
 }
@@ -272,6 +273,7 @@ func applyEnv(cfg *Config, getenv func(string) string) error {
 	set("AUTH_CENTER_REDIS_ADDR", &cfg.RedisAddr)
 	set("AUTH_CENTER_REDIS_PASSWORD", &cfg.RedisPassword)
 	set("AUTH_CENTER_LOG_LEVEL", &cfg.LogLevel)
+	set("AUTH_CENTER_ADMIN_TOKEN", &cfg.AdminToken)
 	if err := setInt(getenv, "AUTH_CENTER_REDIS_DB", &cfg.RedisDB); err != nil {
 		return err
 	}

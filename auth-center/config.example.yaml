@@ -23,6 +23,9 @@ auth_code_ttl: 60
 authorize_txn_ttl: 600
 log:
   level: info
+# 管理 API 的引导令牌只从环境变量 AUTH_CENTER_ADMIN_TOKEN 读取，不要写进这个文件。
+# client_credentials 落地前，也可以用 client_type=m2m 且 scope 含 ua.apps.register 的 access token。
+# 令牌为空时进程仍能启动，/api/v1/apps 返回 401。
 # 签名私钥从 PEM 文件读取。生产把 Kubernetes Secret 挂到 pem_file。
 # AUTH_CENTER_KEY_ACTIVE_PEM_FILE 会替换整个 keys 列表。KMS 延后到 P7。
 keys:

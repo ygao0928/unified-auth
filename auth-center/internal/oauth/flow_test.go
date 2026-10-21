@@ -601,6 +601,7 @@ type mockOP struct {
 	key      *rsa.PrivateKey
 	kid      string
 	hits     atomic.Int32
+	deny     atomic.Bool
 	emp      string
 	authTime int64
 
@@ -650,7 +651,11 @@ func (m *mockOP) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		m.hits.Add(1)
 		u, _ := url.Parse(r.URL.Query().Get("redirect_uri"))
 		q := u.Query()
-		q.Set("code", "upstream-code")
+		if m.deny.Load() {
+			q.Set("error", "access_denied")
+		} else {
+			q.Set("code", "upstream-code")
+		}
 		q.Set("state", r.URL.Query().Get("state"))
 		u.RawQuery = q.Encode()
 		http.Redirect(w, r, u.String(), http.StatusFound)

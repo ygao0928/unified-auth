@@ -9,6 +9,7 @@ import (
 	"sort"
 	"time"
 
+	"github.com/ygao0928/unified-auth/auth-center/internal/admin"
 	"github.com/ygao0928/unified-auth/auth-center/internal/config"
 	"github.com/ygao0928/unified-auth/auth-center/internal/eventbus/redisstream"
 	"github.com/ygao0928/unified-auth/auth-center/internal/httpserver"
@@ -67,17 +68,25 @@ func Run(ctx context.Context, cfg config.Config, logger *slog.Logger) error {
 		idpIDs = append(idpIDs, id)
 	}
 	sort.Strings(idpIDs)
+	store := pgstore.New(pool, cfg.AccessTokenTTLCap, cfg.LifetimeDefaults())
 	handler, err := oauth.New(oauth.Deps{
 		Issuer: cfg.Issuer, DC: cfg.DC,
 		Cap: cfg.AccessTokenTTLCap, ClockSkew: cfg.ClockSkew, Defaults: cfg.LifetimeDefaults(),
 		AuthCodeTTL: time.Duration(cfg.AuthCodeTTL) * time.Second,
 		TxnTTL:      time.Duration(cfg.AuthorizeTxnTTL) * time.Second,
 		Keys:        km,
-		Store:       pgstore.New(pool, cfg.AccessTokenTTLCap, cfg.LifetimeDefaults()),
+		Store:       store,
 		Sessions:    session.New(rdb),
 		IDPs:        providers,
 		Bus:         redisstream.New(rdb),
 		Logger:      logger,
+	})
+	if err != nil {
+		return err
+	}
+	adminHandler, err := admin.New(admin.Deps{
+		Issuer: cfg.Issuer, DC: cfg.DC, ClockSkew: cfg.ClockSkew, AdminToken: cfg.AdminToken,
+		Keys: km, Store: store, Logger: logger,
 	})
 	if err != nil {
 		return err
@@ -100,7 +109,7 @@ func Run(ctx context.Context, cfg config.Config, logger *slog.Logger) error {
 		Handler: httpserver.New(logger, km, []httpserver.Checker{
 			{Name: "postgres", Ping: pool.Ping},
 			{Name: "redis", Ping: func(ctx context.Context) error { return rdb.Ping(ctx).Err() }},
-		}, handler.Mount),
+		}, handler.Mount, adminHandler.Mount),
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 	errCh := make(chan error, 1)

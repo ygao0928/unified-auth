@@ -11,7 +11,8 @@ info:
       Admin 类接口只对内网开放。
     - 错误响应统一为 `ErrorResponse`，错误码见 `../error-codes.yaml`。
     - SAML IdP（`/saml/*`）与 CAS Server（`/cas/*`）兼容通道遵循各自协议，不在本文件描述。
-    - 注册客户端的有效期覆盖见 `ClientLifetimes`。应用注册的 HTTP 接口尚未列入本文件。
+    - 注册客户端的有效期覆盖见 `ClientLifetimes`。应用注册见 `/api/v1/apps`。
+      `client_credentials` 落地前，这些接口接受引导令牌，或 scope 含 `ua.apps.register` 的 m2m access token。
 servers:
   - url: https://auth.corp.com
     description: 统一 issuer（内外网 split DNS）
@@ -24,7 +25,7 @@ tags:
   - name: app
     description: 应用接入（CI 使用）
   - name: admin
-    description: 会话与吊销管理（仅内网）
+    description: 会话、吊销与应用注册（仅内网）
 
 security:
   - m2m: []
@@ -184,7 +185,115 @@ paths:
         - { name: post_logout_redirect_uri, in: query, required: false, schema: { type: string, format: uri } }
         - { name: state, in: query, required: false, schema: { type: string } }
       responses:
-        "302": { description: 跳转 post_logout_redirect_uri 或上游登出页 }
+        "204":
+          description: 没有 post_logout_redirect_uri，且上游不支持登出
+        "302":
+          description: 跳转 post_logout_redirect_uri 或上游登出页
+        "400": { $ref: "#/components/responses/Error" }
+
+  /api/v1/apps:
+    post:
+      tags: [admin]
+      summary: 注册应用
+      description: |
+        返回 `client_id`。机密客户端同时返回只展示一次的 `client_secret`（bcrypt 入库）。
+        `web` / `app` / `miniapp` 可设 `public=true`，此时不生成密钥。`ssr` 与 `m2m` 不能公开。
+        除 `m2m` 外至少要有一个绝对 `redirect_uri`。`session_policy` 省略的字段使用 §5.2 全局默认。
+        需要引导令牌，或 scope `ua.apps.register`。
+      security:
+        - adminBearer: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AppCreate" }
+      responses:
+        "201":
+          description: 已注册。`client_secret` 只在这次响应里出现
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/App" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+    get:
+      tags: [admin]
+      summary: 列出应用
+      description: 不返回 `client_secret`。需要引导令牌，或 scope `ua.apps.register`。
+      security:
+        - adminBearer: []
+      responses:
+        "200":
+          description: 应用列表
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [apps]
+                properties:
+                  apps:
+                    type: array
+                    items: { $ref: "#/components/schemas/App" }
+        "401": { $ref: "#/components/responses/Error" }
+
+  /api/v1/apps/{client_id}:
+    get:
+      tags: [admin]
+      summary: 读取一个应用
+      description: 不返回 `client_secret`。
+      security:
+        - adminBearer: []
+      parameters:
+        - { $ref: "#/components/parameters/ClientID" }
+      responses:
+        "200":
+          description: 应用
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/App" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+    patch:
+      tags: [admin]
+      summary: 更新应用
+      description: |
+        可改名称、类型、回调、back-channel 地址、`session_policy` 和 `enabled`。
+        不返回密钥。`enabled=false` 记为停用。没有密钥的客户端不能改成 `ssr` 或 `m2m`。
+      security:
+        - adminBearer: []
+      parameters:
+        - { $ref: "#/components/parameters/ClientID" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AppPatch" }
+      responses:
+        "200":
+          description: 更新后的应用
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/App" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+
+  /api/v1/apps/{client_id}/secret:
+    post:
+      tags: [admin]
+      summary: 轮换客户端密钥
+      description: 生成新的 `client_secret`，只在这次响应里返回。旧的 bcrypt 哈希被替换。公开客户端轮换后变为机密客户端。
+      security:
+        - adminBearer: []
+      parameters:
+        - { $ref: "#/components/parameters/ClientID" }
+      responses:
+        "200":
+          description: 新密钥只展示一次
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/App" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
 
   /api/v1/revocations:
     get:
@@ -360,10 +469,24 @@ components:
             ua.apps.manage: 同步本应用权限清单
             ua.sessions.read: 查询会话
             ua.sessions.manage: 强制下线
+            ua.apps.register: 注册和更新应用
+    adminBearer:
+      type: http
+      scheme: bearer
+      description: |
+        P1 在 client_credentials 落地前，管理接口接受环境变量 AUTH_CENTER_ADMIN_TOKEN，
+        或 typ=at+jwt、client_type=m2m、scope 含 ua.apps.register 的 access token。
     userBearer:
       type: http
       scheme: bearer
       bearerFormat: JWT
+
+  parameters:
+    ClientID:
+      name: client_id
+      in: path
+      required: true
+      schema: { type: string, pattern: '^[A-Za-z0-9._-]{1,128}$' }
 
   responses:
     Error:
@@ -484,7 +607,7 @@ components:
         注册客户端 `session_policy` 中的有效期覆盖，单位秒。省略的字段使用该 client_type 的全局默认（设计文档 §5.2）。
         access_token_ttl 的有效值不得超过全局 access_token_ttl_cap（默认 1800）。
         m2m 不使用 refresh_token_ttl、idle_timeout、absolute_session_ttl。
-        应用注册接口尚未列入本文件。
+        应用注册见 `/api/v1/apps`。省略的字段使用该 client_type 的全局默认。
       properties:
         access_token_ttl:
           type: integer
@@ -502,6 +625,45 @@ components:
           type: integer
           minimum: 1
           description: web/ssr 全局默认 43200，app/miniapp 全局默认 2592000。m2m 不适用
+      additionalProperties: false
+
+    App:
+      type: object
+      required: [client_id, name, client_type, redirect_uris, enabled, public]
+      properties:
+        client_id: { type: string, pattern: '^[A-Za-z0-9._-]{1,128}$' }
+        name: { type: string }
+        client_type: { type: string, enum: [web, ssr, app, miniapp, m2m] }
+        redirect_uris: { type: array, items: { type: string, format: uri } }
+        backchannel_logout_uri: { type: string, format: uri }
+        session_policy: { $ref: "#/components/schemas/ClientLifetimes" }
+        enabled: { type: boolean }
+        public: { type: boolean, description: 没有密钥的 web、app 或 miniapp }
+        client_secret: { type: string, description: 只在注册和轮换时返回一次 }
+      additionalProperties: false
+
+    AppCreate:
+      type: object
+      required: [name, client_type]
+      properties:
+        client_id: { type: string, pattern: '^[A-Za-z0-9._-]{1,128}$', description: 省略时由服务生成 }
+        name: { type: string }
+        client_type: { type: string, enum: [web, ssr, app, miniapp, m2m] }
+        redirect_uris: { type: array, items: { type: string, format: uri } }
+        backchannel_logout_uri: { type: string, format: uri }
+        session_policy: { $ref: "#/components/schemas/ClientLifetimes" }
+        public: { type: boolean, description: 为 true 时不生成密钥，仅 web、app、miniapp }
+      additionalProperties: false
+
+    AppPatch:
+      type: object
+      properties:
+        name: { type: string }
+        client_type: { type: string, enum: [web, ssr, app, miniapp, m2m] }
+        redirect_uris: { type: array, items: { type: string, format: uri } }
+        backchannel_logout_uri: { type: string, format: uri }
+        session_policy: { $ref: "#/components/schemas/ClientLifetimes" }
+        enabled: { type: boolean }
       additionalProperties: false
 
     RevokeRequest:
