@@ -27,8 +27,17 @@ func TestNewAndNotReady(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if a.ID() != "corp-oidc" || a.Protocol() != idp.ProtocolOIDC {
-		t.Fatalf("id/protocol %s %s", a.ID(), a.Protocol())
+	if a.ID() != "corp-oidc" || a.Protocol() != idp.ProtocolOIDC || a.DisplayName() != "corp-oidc" {
+		t.Fatalf("id/protocol/name %s %s %s", a.ID(), a.Protocol(), a.DisplayName())
+	}
+	named := testConfig()
+	named.DisplayName = " 公司 SSO "
+	namedAdapter, err := New(named)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if namedAdapter.DisplayName() != "公司 SSO" {
+		t.Fatal(namedAdapter.DisplayName())
 	}
 	if _, err := a.BuildLoginRedirect(context.Background(), "state-value"); !errors.Is(err, ErrNotReady) {
 		t.Fatal(err)

@@ -62,7 +62,13 @@ paths:
       summary: 授权端点（授权码 + PKCE）
       description: |
         `code_challenge_method` 只接受 `S256`，所有客户端强制 PKCE。`redirect_uri` 精确匹配已注册值。
-        已有全局会话时静默返回授权码（单点登录），否则跳转上游 SSO。
+        已有全局会话且 `prompt` 不是 `login` 时静默返回授权码（单点登录）。
+        `prompt=none` 且没有会话时重定向到 `redirect_uri`，`error=login_required`，不展示选择页。
+        只配置一个上游身份源时直接跳转。没有身份源时重定向到 `redirect_uri`，`error=temporarily_unavailable`。
+        配置了多个且没有 `idp_hint` 时返回 200 HTML 选择页。此时授权请求（`client_id`、`redirect_uri`、`state`、`nonce`、PKCE、`scope`）已经写入事务，身份源尚未绑定。
+        用户在选择页提交 `POST /oauth2/authorize/idp` 后，同一事务绑定身份源并跳转上游，客户端不必重新发起授权。
+        `idp_hint` 命中时跳过选择页。未知 `idp_hint` 重定向到 `redirect_uri`，`error=invalid_request`。
+        选择页语言取 `ui_locales` 里第一个支持的标签（只认 `zh` 与 `en`），否则看 `Accept-Language`，都没有则用中文。
       security: []
       parameters:
         - { name: response_type, in: query, required: true, schema: { const: code } }
@@ -75,9 +81,52 @@ paths:
         - { name: code_challenge_method, in: query, required: true, schema: { const: S256 } }
         - { name: prompt, in: query, required: false, schema: { type: string, enum: [none, login] } }
         - { name: idp_hint, in: query, required: false, schema: { type: string }, description: "指定上游身份源 ID，多身份源并存时跳过选择页" }
+        - { name: ui_locales, in: query, required: false, schema: { type: string }, description: "空格分隔的语言标签。选择页只认 zh 与 en，取第一个支持的标签" }
+      responses:
+        "200":
+          description: |
+            多个上游身份源且未带 `idp_hint` 时的身份源选择页（`text/html`）。
+            授权请求已保存在事务中。响应带 `Cache-Control: no-store`。
+          content:
+            text/html:
+              schema: { type: string }
+        "302":
+          description: 跳转上游 SSO，或跳到 redirect_uri（带 code 或 error）。单个身份源、带 idp_hint、已有会话，以及参数错误都属于这里。
+
+  /oauth2/authorize/idp:
+    post:
+      tags: [oidc]
+      summary: 选定上游身份源
+      description: |
+        选择页提交。`tx` 是已保存的授权事务 ID，`idp` 是身份源 ID。
+        选定后把身份源写入同一事务并 302 到上游。未知身份源返回 400 HTML，事务保持未绑定，用户可以再选。
+        事务不存在或已过期返回 400 HTML，不重定向到客户端。
+        同一事务再次选择同一个身份源会再次跳转。选择另一个身份源会被拒绝，已绑定的身份源不变。
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required: [tx, idp]
+              properties:
+                tx: { type: string }
+                idp: { type: string }
+                lang: { type: string, enum: [zh, en], description: "选择页语言。非法值时改用 Accept-Language，再没有则用中文" }
       responses:
         "302":
-          description: 跳转上游 SSO、身份源选择页或 redirect_uri（带 code 或 error）
+          description: 跳转所选上游身份源
+        "400":
+          description: 事务无效，或身份源未知，或与已绑定的身份源不一致。HTML，不重定向。
+          content:
+            text/html:
+              schema: { type: string }
+        "503":
+          description: 事务已绑定但暂时无法生成上游跳转。HTML，事务仍在。
+          content:
+            text/html:
+              schema: { type: string }
 
   /oauth2/token:
     post:

@@ -16,7 +16,7 @@ import (
 // auth:revoked:sid 是整个集合一把 TTL；每加一个成员都会刷新这把 TTL。按成员过期的写法尚未决定。
 //
 // 设计图之外、授权码流程需要的键：
-// auth:tx:{id}        授权事务，TTL 由调用方传入
+// auth:tx:{id}        授权事务，TTL 由调用方传入。多个身份源尚未选定时 idp_id 为空
 // auth:code:{hash}    一次性授权码，hash 是原始 code 的 SHA-256 十六进制
 // auth:rtfam:{family} 同一刷新家族里的 refresh hash
 // auth:asfam:{asid}   应用会话当前的 family id
@@ -403,6 +403,16 @@ func (s *Store) TakeTxn(ctx context.Context, id string) (AuthTxn, error) {
 	return txn, nil
 }
 
+// GetTxn 读取授权事务，不删除。选择页和一次失败的选定都还要用它。
+func (s *Store) GetTxn(ctx context.Context, id string) (AuthTxn, error) {
+	var txn AuthTxn
+	if err := s.getJSON(ctx, TxnKey(id), &txn); err != nil {
+		return AuthTxn{}, err
+	}
+	txn.ID = id
+	return txn, nil
+}
+
 func (s *Store) PutCode(ctx context.Context, hash string, code AuthCode, ttl time.Duration) error {
 	if hash == "" || code.ClientID == "" || code.SID == "" || code.ASID == "" {
 		return errors.New("code hash, client_id, sid, and asid are required")
@@ -559,6 +569,17 @@ func (s *Store) putJSON(ctx context.Context, key string, v any, ttl time.Duratio
 		return s.rdb.Set(ctx, key, raw, 0).Err()
 	}
 	return s.rdb.Set(ctx, key, raw, ttl).Err()
+}
+
+func (s *Store) getJSON(ctx context.Context, key string, dst any) error {
+	raw, err := s.rdb.Get(ctx, key).Bytes()
+	if errors.Is(err, redis.Nil) {
+		return ErrNotFound
+	}
+	if err != nil {
+		return err
+	}
+	return json.Unmarshal(raw, dst)
 }
 
 func (s *Store) takeJSON(ctx context.Context, key string, dst any) error {

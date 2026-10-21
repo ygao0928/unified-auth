@@ -169,6 +169,13 @@ func TestRefreshConsumeKeepsTTLAndRevokeChain(t *testing.T) {
 	if err := store.PutTxn(ctx, txn, time.Minute); err != nil {
 		t.Fatal(err)
 	}
+	peek, err := store.GetTxn(ctx, "tx1")
+	if err != nil || peek.ID != "tx1" || peek.State != txn.State || peek.IDPID != "corp" {
+		t.Fatalf("get %+v %v", peek, err)
+	}
+	if !mr.Exists(TxnKey("tx1")) {
+		t.Fatal("get deleted txn")
+	}
 	taken, err := store.TakeTxn(ctx, "tx1")
 	if err != nil || taken.State != txn.State || taken.IDPID != "corp" {
 		t.Fatalf("%+v %v", taken, err)

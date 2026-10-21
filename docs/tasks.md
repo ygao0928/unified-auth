@@ -25,13 +25,13 @@ P0 的契约文件在仓库里已有草案。下面仍把它们列为 P0 任务�
 |---|---|---|---|---|---|
 | P1-INF-01 | 会话 Redis 与配置库 | 按 §5.3.1 落 Redis 键。配置与用户落在 PostgreSQL | — | 3 | 全局会话、应用会话、refresh token 可按键读写。`auth:rt` 的 TTL 等于该客户端的 `refresh_token_ttl` |
 | P1-AC-01 | Go 服务骨架 | Go 1.23+，HTTP 框架用 Chi（兼容 net/http） | — | 2 | 进程可启动，健康检查可用 |
-| P1-AC-02 | 上游可插拔层与 OIDC 适配 | `IdentityProvider` 接口。P1 实现 OIDC 上游适配，使试点能登录。CAS 与 SAML 2.0 仍是必做范围，见 P6-AC-01、P6-AC-02 | P1-AC-01 | 6 | 用 OIDC 上游完成登录跳转与回调，得到 `Identity`（工号必填） |
+| P1-AC-02 | 上游可插拔层与 OIDC 适配 | `IdentityProvider` 接口。P1 实现 OIDC 上游适配，使试点能登录。多个身份源且没有 `idp_hint` 时，`/oauth2/authorize` 返回服务端渲染的选择页（中文 / 英文），授权事务先保存、选定后再绑定身份源。只有一个身份源时直接跳转。`idp_hint` 命中则跳过选择页。CAS 与 SAML 2.0 仍是必做范围，见 P6-AC-01、P6-AC-02 | P1-AC-01 | 6 | 用 OIDC 上游完成登录跳转与回调，得到 `Identity`（工号必填）。多个身份源且没有 `idp_hint` 时可以选定身份源并继续同一次授权 |
 | P1-AC-03 | 属性映射与用户落库 | 每个身份源一份 `attribute_mapping`。首次登录按工号建用户并授予 `default:viewer`（全局只读，`data_scope` 为 `self`，只在插入时授予，不补授）；空属性不覆盖已有值 | P1-AC-02 | 2 | 缺属性时登录仍成功。新用户有 `default:viewer`，再次登录不会重新授予 |
 | P1-AC-04 | 授权码、PKCE 与刷新 | `authorize`（只接受 S256）、`token` 的 authorization_code 与 refresh_token。无密钥的 web / app / miniapp 在 PKCE S256 下可以不带客户端认证换票和刷新；ssr、m2m 以及配置了密钥的客户端必须认证。refresh 每次轮换，新 token 从轮换当时起重新计算 `refresh_token_ttl`。重放旧 token 吊销整条会话链并返回 `AUTH_REFRESH_REUSED`。公开客户端同样轮换并检测重放 | P1-AC-01、P1-INF-01 | 5 | 试点浏览器能走完授权码。连续刷新时，每次得到的 refresh token 都重新计算有效期 |
 | P1-AC-05 | Access Token 与 JWKS | `typ=at+jwt`，算法只允许 RS256 / ES256。有效期按 §5.2：客户端覆盖，否则用全局默认；用户 access token 默认 600 秒，且不超过 `access_token_ttl_cap`（默认 1800）。启动时拒绝与 `conformance/keys/` 相同的签名密钥 | P1-AC-04 | 3 | `/.well-known/openid-configuration` 与 `/oauth2/jwks` 可用。JWKS `Cache-Control: max-age=600` |
 | P1-AC-06 | 全局会话的空闲与绝对时长 | 刷新时检查 `idle_timeout`、`absolute_session_ttl`，以及当前这张 refresh token 是否仍在 `refresh_token_ttl` 内（全局默认 600 秒，从签发或上次轮换起算）。先到期者拒绝刷新，返回 `AUTH_LOGIN_REQUIRED` | P1-INF-01、P1-AC-04 | 3 | 超过 600 秒没有轮换则不能再刷新。在 600 秒内持续轮换时，会话继续，直到空闲超时或绝对时长 |
 | P1-AC-07 | 基础审计 | 登录成功、登录失败按 `audit-event.schema.json` 记录。`actor` 为对象。不记录 token、密码、ticket 原文。P1 追加写入 PostgreSQL `audit_events`。长期保存见 P7-AUD-01；ES 或 ClickHouse 不代选 | P1-AC-03 | 2 | 一次成功登录和一次失败登录能查出符合 schema 的事件 |
-| P1-ADM-01 | 应用注册 | 管理 API `POST/GET/PATCH /api/v1/apps` 与 `POST /api/v1/apps/{client_id}/secret` 注册应用，得到 `client_id` 与只展示一次的 `client_secret`（bcrypt），可配置回调地址、`backchannel_logout_uri`、`client_type`、`session_policy`（`ClientLifetimes`）。前端已定为 React（TypeScript + Vite，Ant Design），页面在 `admin-ui/`。多身份源选择页属于授权端点，还没有做 | P1-AC-01、P1-INF-01 | 4 | 注册出的客户端能完成 P1 登录。未填的有效期等于 §5.2 全局默认 |
+| P1-ADM-01 | 应用注册 | 管理 API `POST/GET/PATCH /api/v1/apps` 与 `POST /api/v1/apps/{client_id}/secret` 注册应用，得到 `client_id` 与只展示一次的 `client_secret`（bcrypt），可配置回调地址、`backchannel_logout_uri`、`client_type`、`session_policy`（`ClientLifetimes`）。前端已定为 React（TypeScript + Vite，Ant Design），页面在 `admin-ui/`。多身份源选择页在授权端点，见 P1-AC-02 | P1-AC-01、P1-INF-01 | 4 | 注册出的客户端能完成 P1 登录。未填的有效期等于 §5.2 全局默认 |
 | P1-DOC-01 | 试点登录说明 | 写明 OIDC 上游怎么配、回调地址、滑动刷新和全局默认有效期。见 [`pilot-login.md`](pilot-login.md) | P1-AC-02、P1-ADM-01 | 1 | 试点按文档能配通 |
 
 关键路径约 15 人日：P1-AC-01 → P1-AC-02 → P1-AC-04 → P1-AC-05。P1-INF-01、P1-ADM-01、P1-AC-07 并行。

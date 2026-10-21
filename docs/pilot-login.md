@@ -19,7 +19,7 @@ make build
 
 ## OIDC 上游
 
-P1 只接 OIDC。CAS 和 SAML 在 P6。只配一个身份源时，`/oauth2/authorize` 会直接跳过去。多个身份源时必须带 `idp_hint`，否则返回 `invalid_request`。选择页属于授权端点，还没有做，也不在管理后台里。
+P1 只接 OIDC。CAS 和 SAML 在 P6。只配一个身份源时，`/oauth2/authorize` 会直接跳过去。多个身份源且没有 `idp_hint` 时，授权端点返回选择页（中文或英文），授权请求已经保存在事务里，选定后跳到对应上游。`idp_hint` 命中则跳过选择页。未知的 `idp_hint` 仍回到应用并带 `invalid_request`。选择页不在管理后台里。`display_name` 是选择页上的名称，不填时用身份源 id。语言先看 `ui_locales`，再看 `Accept-Language`，都没有则用中文。
 
 YAML：
 
@@ -27,6 +27,7 @@ YAML：
 idps:
   - id: corp-oidc
     protocol: OIDC
+    display_name: 公司账号
     issuer: https://idp.example.com
     client_id: auth-center
     client_secret: 替换成上游密钥
@@ -109,7 +110,6 @@ curl -sS https://auth.example.com/oauth2/token \
 
 ## 这一阶段没有
 
-- 多身份源选择页（属于 `/oauth2/authorize`，不是应用注册页面）
 - `client_credentials`、token exchange、`private_key_jwt`
 - CAS / SAML 上游
 - 管理员二次认证
