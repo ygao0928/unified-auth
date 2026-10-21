@@ -214,7 +214,7 @@ func TestLogoutUserinfoRevokeAndIntrospect(t *testing.T) {
 		t.Fatalf("cross introspect %d %#v", status, body)
 	}
 	status, body = postAuth("/oauth2/introspect", spa.ClientID, "", url.Values{"token": {webAccess}})
-	if status != http.StatusUnauthorized || body["error"] != "invalid_client" {
+	if status != http.StatusUnauthorized || body["error"] != "invalid_client" || body["code"] != "INVALID_CLIENT" {
 		t.Fatalf("public introspect %d %#v", status, body)
 	}
 	status, body = postAuth("/oauth2/introspect", web.ClientID, "conf-secret", url.Values{})
@@ -243,7 +243,7 @@ func TestLogoutUserinfoRevokeAndIntrospect(t *testing.T) {
 		t.Fatalf("bad hint %d %#v", status, body)
 	}
 	status, body = postAuth("/oauth2/revoke", web.ClientID, "", url.Values{"token": {webRefresh}})
-	if status != http.StatusUnauthorized || body["error"] != "invalid_client" {
+	if status != http.StatusUnauthorized || body["error"] != "invalid_client" || body["code"] != "INVALID_CLIENT" {
 		t.Fatalf("confidential revoke without secret %d %#v", status, body)
 	}
 	status, body = postAuth("/oauth2/revoke", web.ClientID, "conf-secret", url.Values{"token": {webRefresh}, "token_type_hint": {"refresh_token"}})

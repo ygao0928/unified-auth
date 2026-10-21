@@ -218,6 +218,8 @@ JOSE 头 `typ` 必须是 `at+jwt`（也接受 `application/at+jwt`，不区分�
 
 全局默认下，单次 refresh token 与用户 access token 同为 600 秒，短于 `idle_timeout` 和 `absolute_session_ttl`。因为是滑动刷新，客户端在 600 秒内成功轮换就能继续，直到空闲超时或绝对时长。Redis 中 `auth:rt:{refresh_hash}` 的 TTL 取该客户端的 `refresh_token_ttl`，从该 token 签发或轮换时起算。
 
+**授权码与授权事务**不在客户端 `session_policy` 里，是认证中心进程配置。`auth_code_ttl` 默认 60 秒，授权码写入 Redis 后到期失效。`authorize_txn_ttl` 默认 600 秒，从保存授权事务起计算；选择页绑定身份源时按当时重新计算。YAML 键是 `auth_code_ttl`、`authorize_txn_ttl`，环境变量是 `AUTH_CENTER_AUTH_CODE_TTL`、`AUTH_CENTER_AUTHORIZE_TXN_TTL`。都是整数秒，至少 1。不能按客户端覆盖。
+
 **密钥管理**：
 - P1 从 PEM 文件加载签名私钥，各机房挂同一套内容。配置写在 `keys[].pem_file`，或环境变量 `AUTH_CENTER_KEY_ACTIVE_PEM_FILE`（可选 `AUTH_CENTER_KEY_ACTIVE_KID`、`AUTH_CENTER_KEY_ACTIVE_ALG`）。下一把密钥用 `AUTH_CENTER_KEY_NEXT_PEM_FILE`、`AUTH_CENTER_KEY_NEXT_KID`、`AUTH_CENTER_KEY_NEXT_ALG`。设置了 active PEM 环境变量时，不再使用文件里的 `keys`。Kubernetes 上把 Secret 挂到这些路径。KMS 不在 P1，延后到 P7。
 - JWKS 在轮换前同时发布当前密钥和下一把密钥。轮换完成后，上一把密钥继续发布 `access_token_ttl_cap + previous_key_buffer` 秒。`previous_key_buffer` 是认证中心配置，整数秒，默认 60（1 分钟）。默认一共 1860 秒（1800 + 60）。不按某个客户端的较短有效期缩短这段时间：客户端可以把 access token 调到上限，窗口必须盖住这个上限。每 90 天轮换一次。
@@ -587,9 +589,11 @@ P1 把通过 schema 检查的事件追加进 PostgreSQL 表 `audit_events`。登
 | 403 | `PERM_DENIED` | 已认证，但没有对应权限 | 提示无权限，不跳转 |
 | 403 | `SCOPE_INSUFFICIENT` | Open API 的 scope 不足 | 调用方修正请求 |
 | 409 | `AUTH_CONCURRENT_LIMIT` | 多端策略为 `limit:N` 且已达上限，拒绝新登录 | 提示已达上限，不跳转登录 |
-| 400 | `INVALID_REQUEST` | 参数缺失或格式错误 | 调用方修正请求 |
+| 400 | `INVALID_REQUEST` | 参数缺失或格式错误。授权端点上未知或停用的客户端也用这个码，且不重定向 | 调用方修正请求 |
+| 401 | `INVALID_CLIENT` | 客户端认证失败（RFC 6749 `invalid_client`）。令牌、吊销、内省返回 HTTP 401，并带 `WWW-Authenticate`。不是终端用户登录失败 | 调用方修正请求 |
 | 404 | `NOT_FOUND` | 资源不存在 | 调用方修正请求 |
 | 429 | `RATE_LIMITED` | 触发限流 | 遵循 `Retry-After`，退避后重试 |
+| 500 | `INTERNAL_ERROR` | 认证中心内部错误，响应不含内部细节。浏览器授权跳转里的 OAuth `server_error` 仍是 302，不用这个码 | 退避后重试 |
 | 502 | `AUTH_UPSTREAM_FAILED` | 上游 SSO 校验失败或不可达 | 退避后重试 |
 | 503 | `AUTH_DEPENDENCY_UNAVAILABLE` | SDK 拿不到任何可用 JWKS，或认证中心依赖组件不可用 | 退避后重试 |
 

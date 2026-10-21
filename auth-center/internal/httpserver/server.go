@@ -107,8 +107,7 @@ func (s *server) recover(next http.Handler) http.Handler {
 		defer func() {
 			if rec := recover(); rec != nil {
 				s.logger.Error("panic", "err", rec, "stack", string(debug.Stack()), "trace_id", TraceID(r.Context()))
-				// spec 没有 500 错误码。不新造 code，响应体也不回显 panic 内容。
-				http.Error(w, "internal error", http.StatusInternalServerError)
+				apierr.Write(w, http.StatusInternalServerError, apierr.CodeInternalError, "internal error", TraceID(r.Context()), nil)
 			}
 		}()
 		next.ServeHTTP(w, r)

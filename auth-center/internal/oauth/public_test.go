@@ -174,7 +174,7 @@ func TestPublicClientTokenAndRefresh(t *testing.T) {
 		"grant_type": {"authorization_code"}, "code": {code}, "redirect_uri": {redirect},
 		"client_id": {publicWeb}, "client_secret": {"nope"}, "code_verifier": {verifier},
 	})
-	if status != http.StatusUnauthorized || body["error"] != "invalid_client" || body["code"] != "INVALID_REQUEST" {
+	if status != http.StatusUnauthorized || body["error"] != "invalid_client" || body["code"] != "INVALID_CLIENT" {
 		t.Fatalf("bogus secret %d %#v", status, body)
 	}
 	if hdr.Get("WWW-Authenticate") == "" {
@@ -186,7 +186,7 @@ func TestPublicClientTokenAndRefresh(t *testing.T) {
 		"grant_type": {"authorization_code"}, "code": {code}, "redirect_uri": {redirect},
 		"client_id": {confidential}, "code_verifier": {verifier},
 	})
-	if status != http.StatusUnauthorized || body["error"] != "invalid_client" {
+	if status != http.StatusUnauthorized || body["error"] != "invalid_client" || body["code"] != "INVALID_CLIENT" {
 		t.Fatalf("confidential without secret %d %#v", status, body)
 	}
 	code = seed(confidential, config.ClientWeb)
@@ -203,14 +203,14 @@ func TestPublicClientTokenAndRefresh(t *testing.T) {
 		"grant_type": {"authorization_code"}, "code": {code}, "redirect_uri": {redirect},
 		"client_id": {ssr}, "code_verifier": {verifier},
 	})
-	if status != http.StatusUnauthorized || body["error"] != "invalid_client" {
+	if status != http.StatusUnauthorized || body["error"] != "invalid_client" || body["code"] != "INVALID_CLIENT" {
 		t.Fatalf("ssr without secret %d %#v", status, body)
 	}
 
 	status, body, _ = post(url.Values{
 		"grant_type": {"client_credentials"}, "client_id": {publicWeb},
 	})
-	if status != http.StatusUnauthorized || body["error"] != "invalid_client" {
+	if status != http.StatusUnauthorized || body["error"] != "invalid_client" || body["code"] != "INVALID_CLIENT" {
 		t.Fatalf("public client_credentials %d %#v", status, body)
 	}
 }

@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/ygao0928/unified-auth/auth-center/internal/apierr"
 	"github.com/ygao0928/unified-auth/auth-center/internal/httpserver"
 	"github.com/ygao0928/unified-auth/auth-center/internal/idp"
 	"github.com/ygao0928/unified-auth/auth-center/internal/session"
@@ -137,7 +138,7 @@ func (h *Handler) startSelection(w http.ResponseWriter, r *http.Request, clientI
 		h.redirectErr(w, r, redirectURI, state, "server_error", "authorization could not be started")
 		return
 	}
-	h.writeSelect(w, txn, http.StatusOK, "", pickLocale(r))
+	h.writeSelect(w, r, txn, http.StatusOK, "", pickLocale(r))
 }
 
 // chooseIDP 把选择页提交的身份源绑定到已有事务，再跳转上游。
@@ -145,14 +146,14 @@ func (h *Handler) startSelection(w http.ResponseWriter, r *http.Request, clientI
 func (h *Handler) chooseIDP(w http.ResponseWriter, r *http.Request) {
 	r.Body = http.MaxBytesReader(w, r.Body, 4096)
 	if err := r.ParseForm(); err != nil {
-		h.writeExpired(w, localeFromAccept(r.Header.Get("Accept-Language")))
+		h.writeExpired(w, r, localeFromAccept(r.Header.Get("Accept-Language")))
 		return
 	}
 	lang := formLocale(r)
 	txID := r.PostForm.Get("tx")
 	idpID := r.PostForm.Get("idp")
 	if txID == "" || len(txID) > 128 || idpID == "" || len(idpID) > maxParam {
-		h.writeExpired(w, lang)
+		h.writeExpired(w, r, lang)
 		return
 	}
 	txn, err := h.sessions.GetTxn(r.Context(), txID)
@@ -160,34 +161,34 @@ func (h *Handler) chooseIDP(w http.ResponseWriter, r *http.Request) {
 		if !errors.Is(err, session.ErrNotFound) {
 			h.logger.Error("load authorization transaction", "err", err.Error(), "trace_id", httpserver.TraceID(r.Context()))
 		}
-		h.writeExpired(w, lang)
+		h.writeExpired(w, r, lang)
 		return
 	}
 	if txn.IDPID != "" && txn.IDPID != idpID {
-		h.writeSelect(w, txn, http.StatusBadRequest, "mismatch", lang)
+		h.writeSelect(w, r, txn, http.StatusBadRequest, "mismatch", lang)
 		return
 	}
 	provider, ok := h.idps[idpID]
 	if !ok {
-		h.writeSelect(w, txn, http.StatusBadRequest, "unknown", lang)
+		h.writeSelect(w, r, txn, http.StatusBadRequest, "unknown", lang)
 		return
 	}
 	txn.IDPID = provider.ID()
 	if err := h.sessions.PutTxn(r.Context(), txn, h.TxnTTL); err != nil {
 		h.logger.Error("save authorization transaction", "err", err.Error(), "trace_id", httpserver.TraceID(r.Context()))
-		h.writeSelect(w, txn, http.StatusServiceUnavailable, "upstream", lang)
+		h.writeSelect(w, r, txn, http.StatusServiceUnavailable, "upstream", lang)
 		return
 	}
 	loc, err := provider.BuildLoginRedirect(r.Context(), txn.ID)
 	if err != nil {
 		h.logger.Error("upstream redirect", "idp", provider.ID(), "trace_id", httpserver.TraceID(r.Context()))
-		h.writeSelect(w, txn, http.StatusServiceUnavailable, "upstream", lang)
+		h.writeSelect(w, r, txn, http.StatusServiceUnavailable, "upstream", lang)
 		return
 	}
 	http.Redirect(w, r, loc, http.StatusFound)
 }
 
-func (h *Handler) writeSelect(w http.ResponseWriter, txn session.AuthTxn, status int, kind, lang string) {
+func (h *Handler) writeSelect(w http.ResponseWriter, r *http.Request, txn session.AuthTxn, status int, kind, lang string) {
 	if lang != localeEN {
 		lang = localeZH
 	}
@@ -206,23 +207,23 @@ func (h *Handler) writeSelect(w http.ResponseWriter, txn session.AuthTxn, status
 		page.Error = text.Upstream
 		page.Providers = h.idpChoices(txn.IDPID)
 	}
-	h.writeHTML(w, status, page)
+	h.writeHTML(w, r, status, page)
 }
 
-func (h *Handler) writeExpired(w http.ResponseWriter, lang string) {
+func (h *Handler) writeExpired(w http.ResponseWriter, r *http.Request, lang string) {
 	if lang != localeEN {
 		lang = localeZH
 	}
 	text := selectText[lang]
-	h.writeHTML(w, http.StatusBadRequest, selectPage{
+	h.writeHTML(w, r, http.StatusBadRequest, selectPage{
 		Lang: lang, Title: text.ExpiredTitle, Instruction: text.Expired,
 	})
 }
 
-func (h *Handler) writeHTML(w http.ResponseWriter, status int, page selectPage) {
+func (h *Handler) writeHTML(w http.ResponseWriter, r *http.Request, status int, page selectPage) {
 	var buf bytes.Buffer
 	if err := selectTpl.Execute(&buf, page); err != nil {
-		http.Error(w, "internal error", http.StatusInternalServerError)
+		apierr.Write(w, http.StatusInternalServerError, apierr.CodeInternalError, "internal error", httpserver.TraceID(r.Context()), nil)
 		return
 	}
 	hdr := w.Header()

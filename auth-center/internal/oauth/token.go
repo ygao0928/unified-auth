@@ -23,8 +23,7 @@ func (h *Handler) token(w http.ResponseWriter, r *http.Request) {
 	client, ok := h.resolveClient(r)
 	if !ok {
 		w.Header().Set("WWW-Authenticate", `Basic realm="auth-center"`)
-		// 错误码清单里没有 invalid_client。平台 code 用 INVALID_REQUEST，HTTP 状态按 RFC 6749 取 401。
-		h.writeErr(w, r, http.StatusUnauthorized, apierr.CodeInvalidRequest, "client authentication failed", "invalid_client")
+		h.writeErr(w, r, http.StatusUnauthorized, apierr.CodeInvalidClient, "client authentication failed", "invalid_client")
 		return
 	}
 	switch r.PostFormValue("grant_type") {

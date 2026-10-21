@@ -102,7 +102,9 @@ curl -sS https://auth.example.com/oauth2/token \
   -d code_verifier="$VERIFIER"
 ```
 
-公开客户端去掉 `-u`，改为 `-d client_id=...`。响应里的 access token 是 `at+jwt`。`refresh_token` 不透明。每次刷新都轮换，新的 refresh token 从当时起重新计算 `refresh_token_ttl`（默认 600 秒）。在这 600 秒内持续轮换，会话可以延续到空闲超时或绝对时长，先到期者返回 `AUTH_LOGIN_REQUIRED`。重放旧 refresh token 吊销整条会话链并返回 `AUTH_REFRESH_REUSED`。
+公开客户端去掉 `-u`，改为 `-d client_id=...`。响应里的 access token 是 `at+jwt`。`refresh_token` 不透明。每次刷新都轮换，新的 refresh token 从当时起重新计算 `refresh_token_ttl`（默认 600 秒）。在这 600 秒内持续轮换，会话可以延续到空闲超时或绝对时长，先到期者返回 `AUTH_LOGIN_REQUIRED`。重放旧 refresh token 吊销整条会话链并返回 `AUTH_REFRESH_REUSED`。客户端认证失败返回 HTTP 401，`code` 为 `INVALID_CLIENT`。
+
+授权码默认 60 秒（`auth_code_ttl`），授权事务默认 600 秒（`authorize_txn_ttl`）。这两项是认证中心进程配置，不能按应用覆盖。环境变量是 `AUTH_CENTER_AUTH_CODE_TTL` 和 `AUTH_CENTER_AUTHORIZE_TXN_TTL`。
 
 ## 登出
 

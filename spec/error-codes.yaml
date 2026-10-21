@@ -66,7 +66,11 @@ codes:
   - code: INVALID_REQUEST
     http_status: 400
     client_action: fix_request
-    description: 参数缺失或格式错误
+    description: 参数缺失或格式错误。授权端点上未知或停用的客户端也用这个码（HTTP 400），不重定向
+  - code: INVALID_CLIENT
+    http_status: 401
+    client_action: fix_request
+    description: 客户端认证失败（RFC 6749 invalid_client）。令牌、吊销、内省端点返回 HTTP 401，并带 WWW-Authenticate。不是终端用户的登录失败
   - code: NOT_FOUND
     http_status: 404
     client_action: fix_request
@@ -79,3 +83,7 @@ codes:
     http_status: 503
     client_action: retry
     description: SDK 无法获取任何可用 JWKS，或认证中心依赖组件不可用
+  - code: INTERNAL_ERROR
+    http_status: 500
+    client_action: retry
+    description: 认证中心内部错误。响应不包含内部细节。浏览器授权流程里的 OAuth server_error 仍是 302，不用这个码

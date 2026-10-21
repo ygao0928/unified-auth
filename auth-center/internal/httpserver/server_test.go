@@ -97,10 +97,10 @@ func TestRecover(t *testing.T) {
 		panic("token secret")
 	}))
 	inner.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/boom", nil))
-	if rec.Code != http.StatusInternalServerError {
-		t.Fatal(rec.Code)
+	if rec.Code != http.StatusInternalServerError || !strings.Contains(rec.Header().Get("Content-Type"), "application/json") {
+		t.Fatal(rec.Code, rec.Header().Get("Content-Type"))
 	}
-	if strings.Contains(rec.Body.String(), "token secret") {
+	if strings.Contains(rec.Body.String(), "token secret") || !strings.Contains(rec.Body.String(), apierr.CodeInternalError) {
 		t.Fatal(rec.Body.String())
 	}
 	if !strings.Contains(buf.String(), "token secret") {

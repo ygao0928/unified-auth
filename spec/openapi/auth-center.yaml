@@ -13,11 +13,15 @@ info:
     - SAML IdP（`/saml/*`）与 CAS Server（`/cas/*`）兼容通道遵循各自协议，不在本文件描述。
     - 注册客户端的有效期覆盖见 `ClientLifetimes`。应用注册见 `/api/v1/apps`。
       `client_credentials` 落地前，这些接口接受引导令牌，或 scope 含 `ua.apps.register` 的 m2m access token。
+    - 授权码默认有效期 `auth_code_ttl` 为 60 秒，授权事务默认有效期 `authorize_txn_ttl` 为 600 秒。
+      二者是认证中心进程配置（YAML 或环境变量 `AUTH_CENTER_AUTH_CODE_TTL`、`AUTH_CENTER_AUTHORIZE_TXN_TTL`），不能按客户端覆盖。整数秒，至少 1。
 servers:
   - url: https://auth.corp.com
     description: 统一 issuer（内外网 split DNS）
 
 tags:
+  - name: health
+    description: 进程存活与就绪
   - name: oidc
     description: OpenID Connect / OAuth2 标准端点
   - name: sdk
@@ -31,6 +35,47 @@ security:
   - m2m: []
 
 paths:
+  /healthz:
+    get:
+      tags: [health]
+      summary: 存活检查
+      description: 进程能响应即可，不检查数据库或 Redis。不需要认证。
+      security: []
+      responses:
+        "200":
+          description: 进程存活
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status]
+                properties:
+                  status: { type: string, const: ok }
+
+  /readyz:
+    get:
+      tags: [health]
+      summary: 就绪检查
+      description: |
+        检查进程配置的依赖（PostgreSQL、Redis）。未配置任何检查项时返回 503。
+        失败时 `code` 为 `AUTH_DEPENDENCY_UNAVAILABLE`，`details.dependencies` 列出失败项。不需要认证。
+      security: []
+      responses:
+        "200":
+          description: 依赖可用
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status]
+                properties:
+                  status: { type: string, const: ready }
+        "503":
+          description: 依赖不可用
+          content:
+            application/json:
+              schema: { $ref: "../schemas/error-response.schema.json" }
+
   /.well-known/openid-configuration:
     get:
       tags: [oidc]
@@ -65,7 +110,7 @@ paths:
         已有全局会话且 `prompt` 不是 `login` 时静默返回授权码（单点登录）。
         `prompt=none` 且没有会话时重定向到 `redirect_uri`，`error=login_required`，不展示选择页。
         只配置一个上游身份源时直接跳转。没有身份源时重定向到 `redirect_uri`，`error=temporarily_unavailable`。
-        配置了多个且没有 `idp_hint` 时返回 200 HTML 选择页。此时授权请求（`client_id`、`redirect_uri`、`state`、`nonce`、PKCE、`scope`）已经写入事务，身份源尚未绑定。
+        配置了多个且没有 `idp_hint` 时返回 200 HTML 选择页。此时授权请求（`client_id`、`redirect_uri`、`state`、`nonce`、PKCE、`scope`）已经写入事务，身份源尚未绑定。事务默认保留 `authorize_txn_ttl`（600 秒）。
         用户在选择页提交 `POST /oauth2/authorize/idp` 后，同一事务绑定身份源并跳转上游，客户端不必重新发起授权。
         `idp_hint` 命中时跳过选择页。未知 `idp_hint` 重定向到 `redirect_uri`，`error=invalid_request`。
         选择页语言取 `ui_locales` 里第一个支持的标签（只认 `zh` 与 `en`），否则看 `Accept-Language`，都没有则用中文。
@@ -140,6 +185,8 @@ paths:
         - `urn:ietf:params:oauth:grant-type:token-exchange`（小程序 wx code 换取、服务间身份传递）
 
         机密客户端使用 `client_secret_basic` 或 `private_key_jwt` 认证。
+        客户端认证失败时 HTTP 401，平台 `code` 为 `INVALID_CLIENT`，OAuth `error` 为 `invalid_client`，并带 `WWW-Authenticate`。
+        授权码默认 `auth_code_ttl` 60 秒。
       security: []
       requestBody:
         required: true
