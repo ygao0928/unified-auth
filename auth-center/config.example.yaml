@@ -37,6 +37,7 @@ keys:
 # idps:
 #   - id: corp-oidc
 #     protocol: OIDC
+#     display_name: 公司账号
 #     issuer: https://idp.example.com
 #     client_id: auth-center
 #     client_secret: replace-me

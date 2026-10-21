@@ -132,6 +132,7 @@ func New(d Deps) (*Handler, error) {
 func (h *Handler) Mount(r chi.Router) {
 	r.Get("/.well-known/openid-configuration", h.discovery)
 	r.Get("/oauth2/authorize", h.authorize)
+	r.Post("/oauth2/authorize/idp", h.chooseIDP)
 	r.Post("/oauth2/token", h.token)
 	r.Get("/oauth2/logout", h.logout)
 	r.Get("/oauth2/userinfo", h.userinfo)
@@ -211,33 +212,13 @@ func (h *Handler) authorize(w http.ResponseWriter, r *http.Request) {
 		case errors.Is(err, errNoIDP):
 			h.redirectErr(w, r, redirectURI, state, "temporarily_unavailable", "no upstream identity provider is configured")
 		case errors.Is(err, errNeedHint):
-			h.redirectErr(w, r, redirectURI, state, "invalid_request", "idp_hint is required")
+			h.startSelection(w, r, client.ClientID, redirectURI, state, nonce, challenge, scope)
 		default:
 			h.redirectErr(w, r, redirectURI, state, "invalid_request", "idp_hint is unknown")
 		}
 		return
 	}
-	txID, err := randomHex(32)
-	if err != nil {
-		h.redirectErr(w, r, redirectURI, state, "server_error", "authorization could not be started")
-		return
-	}
-	txn := session.AuthTxn{
-		ID: txID, ClientID: client.ClientID, RedirectURI: redirectURI, State: state,
-		Nonce: nonce, CodeChallenge: challenge, Scope: scope, IDPID: provider.ID(),
-	}
-	if err := h.sessions.PutTxn(r.Context(), txn, h.TxnTTL); err != nil {
-		h.logger.Error("save authorization transaction", "err", err.Error(), "trace_id", httpserver.TraceID(r.Context()))
-		h.redirectErr(w, r, redirectURI, state, "server_error", "authorization could not be started")
-		return
-	}
-	loc, err := provider.BuildLoginRedirect(r.Context(), txID)
-	if err != nil {
-		h.logger.Error("upstream redirect", "idp", provider.ID(), "trace_id", httpserver.TraceID(r.Context()))
-		h.redirectErr(w, r, redirectURI, state, "server_error", "upstream identity provider is unavailable")
-		return
-	}
-	http.Redirect(w, r, loc, http.StatusFound)
+	h.startUpstream(w, r, provider, client.ClientID, redirectURI, state, nonce, challenge, scope)
 }
 
 func (h *Handler) callback(w http.ResponseWriter, r *http.Request) {

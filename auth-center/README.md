@@ -25,7 +25,7 @@
 
 refresh token 重放在吊销整条链之后再发布 `auth.revoked`（`type=session`，`reason=refresh_reused`）。P4-AC-04 的上游登出、SAML / CAS 以及管理端踢下线还没做。
 
-试点可以通过文档里的 API 或 `admin-ui/` 注册客户端并完成 OIDC 登录。`client_credentials`、token exchange、CAS / SAML 不在本服务里。内省的「仅内网」没有在进程里做网络限制。多身份源选择页还没有做。
+试点可以通过文档里的 API 或 `admin-ui/` 注册客户端并完成 OIDC 登录。`client_credentials`、token exchange、CAS / SAML 不在本服务里。内省的「仅内网」没有在进程里做网络限制。多个身份源且没有 `idp_hint` 时，`/oauth2/authorize` 返回服务端渲染的选择页。
 
 ## 本地
 
@@ -52,7 +52,7 @@ make keygen
 
 全局默认有效期的内置数字在 `internal/config/lifetimes.go`（设计 §5.2）。YAML 和环境变量可以改这些默认；客户端 `session_policy` 里写了的项优先，access token 仍会被 `access_token_ttl_cap` 截断。ssr 使用 web 的空闲和绝对时长，miniapp 使用 app 的。没有单独的 ssr / miniapp 配置项。
 
-上游只实现 OIDC。一个身份源时可以直接登录；多个身份源必须带 `idp_hint`。还没有身份源选择页。回调路径是 `/idp/{id}/callback`。
+上游只实现 OIDC。一个身份源时直接跳转。多个身份源且没有 `idp_hint` 时返回选择页，授权事务先保存，选定后再绑定并跳转；`idp_hint` 命中则跳过选择页。`display_name` 为空时选择页显示身份源 id。回调路径是 `/idp/{id}/callback`。
 
 令牌端点接受 `client_secret_basic` 和 `client_secret_post`。`client_secret` 以 bcrypt 保存。没有密钥的 web、app、miniapp 在 `authorization_code` 和 `refresh_token` 上只交 `client_id`。交了密钥就必须匹配，否则 `invalid_client`。ssr 和 m2m 即使没配密钥也不能免认证。refresh token 在 Redis 里的键是原始值的 SHA-256 十六进制，不是原始 token。
 

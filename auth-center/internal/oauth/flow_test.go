@@ -453,102 +453,21 @@ func TestOIDCAuthorizeTokenAndRefresh(t *testing.T) {
 	}
 }
 
-func TestAuthorizeRequiresHintWhenSeveralIDPs(t *testing.T) {
-	pool := pgtest.Pool(t)
-	mr := miniredis.RunT(t)
-	rdb := redis.NewClient(&redis.Options{Addr: mr.Addr()})
-	t.Cleanup(func() { _ = rdb.Close() })
-	pemBytes, _, err := keys.GenerateRSA("hint-key", 2048)
-	if err != nil {
-		t.Fatal(err)
-	}
-	path := t.TempDir() + "/active.pem"
-	if err := os.WriteFile(path, pemBytes, 0o600); err != nil {
-		t.Fatal(err)
-	}
-	mgr, err := keys.LoadFiles([]keys.Input{{Alg: keys.AlgRS256, PEMFile: path, Role: keys.RoleActive}})
-	if err != nil {
-		t.Fatal(err)
-	}
-	store := pgstore.New(pool, 1800, config.BuiltinLifetimeDefaults())
-	var landed atomic.Value
-	clientSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		landed.Store(r.URL.String())
-		w.WriteHeader(http.StatusNoContent)
-	}))
-	t.Cleanup(clientSrv.Close)
-	redirect := clientSrv.URL + "/cb"
-	hash, err := pgstore.HashClientSecret("secret", bcrypt.MinCost)
-	if err != nil {
-		t.Fatal(err)
-	}
-	id := "hint-" + randomSuffix(t)
-	if err := store.CreateClient(context.Background(), pgstore.Client{
-		ClientID: id, Name: id, ClientType: config.ClientWeb, SecretHash: hash,
-		RedirectURIs: []string{redirect}, Enabled: true,
-	}); err != nil {
-		t.Fatal(err)
-	}
-	authSrv := httptest.NewUnstartedServer(nil)
-	handler, err := New(Deps{
-		Issuer: "http://" + authSrv.Listener.Addr().String(), DC: "local", Cap: 1800, ClockSkew: 60,
-		Defaults: config.BuiltinLifetimeDefaults(),
-		Keys:     mgr, Store: store, Sessions: session.New(rdb),
-		IDPs: map[string]idp.IdentityProvider{
-			"one": stubIDP{id: "one"},
-			"two": stubIDP{id: "two"},
-		},
-		Logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	authSrv.Config.Handler = httpserver.New(nil, mgr, nil, handler.Mount)
-	authSrv.Start()
-	t.Cleanup(authSrv.Close)
-	res, err := http.Get(authorizeURL(authSrv.URL, id, redirect, "state-state-state", "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQ", ""))
-	if err != nil {
-		t.Fatal(err)
-	}
-	res.Body.Close()
-	got, _ := landed.Load().(string)
-	u, err := url.Parse(got)
-	if err != nil || u.Query().Get("error") != "invalid_request" || u.Query().Get("error_description") == "" {
-		t.Fatalf("landed %s", got)
-	}
-
-	empty := httptest.NewUnstartedServer(nil)
-	noIDP, err := New(Deps{
-		Issuer: "http://" + empty.Listener.Addr().String(), DC: "local", Cap: 1800, ClockSkew: 60,
-		Defaults: config.BuiltinLifetimeDefaults(),
-		Keys:     mgr, Store: store, Sessions: session.New(rdb),
-		Logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	empty.Config.Handler = httpserver.New(nil, mgr, nil, noIDP.Mount)
-	empty.Start()
-	t.Cleanup(empty.Close)
-	landed.Store("")
-	res, err = http.Get(authorizeURL(empty.URL, id, redirect, "state-state-state", "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQ", ""))
-	if err != nil {
-		t.Fatal(err)
-	}
-	res.Body.Close()
-	got, _ = landed.Load().(string)
-	u, err = url.Parse(got)
-	if err != nil || u.Query().Get("error") != "temporarily_unavailable" {
-		t.Fatalf("no idp landed %s", got)
-	}
+type stubIDP struct {
+	id   string
+	name string
 }
 
-type stubIDP struct{ id string }
-
-func (s stubIDP) ID() string             { return s.id }
+func (s stubIDP) ID() string { return s.id }
+func (s stubIDP) DisplayName() string {
+	if s.name != "" {
+		return s.name
+	}
+	return s.id
+}
 func (s stubIDP) Protocol() idp.Protocol { return idp.ProtocolOIDC }
-func (s stubIDP) BuildLoginRedirect(context.Context, string) (string, error) {
-	return "http://idp.example/login", nil
+func (s stubIDP) BuildLoginRedirect(_ context.Context, state string) (string, error) {
+	return "http://idp.example/" + url.PathEscape(s.id) + "/login?state=" + url.QueryEscape(state), nil
 }
 func (s stubIDP) HandleCallback(context.Context, *http.Request) (*idp.Identity, error) {
 	return nil, errNoIDP

@@ -138,7 +138,8 @@ func loadProviders(ctx context.Context, cfg config.Config) (map[string]idp.Ident
 	defer cancel()
 	for _, item := range cfg.IDPs {
 		adapter, err := oidc.New(oidc.Config{
-			ID: item.ID, Issuer: item.Issuer, ClientID: item.ClientID, ClientSecret: item.ClientSecret,
+			ID: item.ID, DisplayName: item.DisplayName,
+			Issuer: item.Issuer, ClientID: item.ClientID, ClientSecret: item.ClientSecret,
 			RedirectURL: item.RedirectURL, Scopes: item.Scopes,
 			Mapping: oidc.Mapping{
 				EmpNo: item.Mapping.EmpNo, Name: item.Mapping.Name, Email: item.Mapping.Email,

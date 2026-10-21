@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 
 	"github.com/coreos/go-oidc/v3/oidc"
@@ -24,6 +25,7 @@ var (
 // Config 是一个 OIDC 上游身份源。属性映射的 claim 名由环境决定，这里不设默认 claim。
 type Config struct {
 	ID           string
+	DisplayName  string
 	Issuer       string
 	ClientID     string
 	ClientSecret string
@@ -124,6 +126,14 @@ func (a *Adapter) Discover(ctx context.Context) error {
 }
 
 func (a *Adapter) ID() string { return a.cfg.ID }
+
+// DisplayName 返回配置的名称；没配时用身份源 ID。
+func (a *Adapter) DisplayName() string {
+	if name := strings.TrimSpace(a.cfg.DisplayName); name != "" {
+		return name
+	}
+	return a.cfg.ID
+}
 
 func (a *Adapter) Protocol() idp.Protocol { return idp.ProtocolOIDC }
 

@@ -40,6 +40,8 @@ type Identity struct {
 // IdentityProvider 抽象上游 SSO。新增协议只新增实现。
 type IdentityProvider interface {
 	ID() string
+	// DisplayName 是选择页上的名称。空字符串时调用方改用 ID。
+	DisplayName() string
 	Protocol() Protocol
 	BuildLoginRedirect(ctx context.Context, state string) (string, error)
 	HandleCallback(ctx context.Context, r *http.Request) (*Identity, error)

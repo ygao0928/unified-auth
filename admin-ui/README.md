@@ -19,7 +19,7 @@ npm run dev
 
 打开 http://127.0.0.1:5173 ，填入同一个引导令牌。令牌只放在 `sessionStorage`。
 
-多身份源选择页不在这里。它属于 `/oauth2/authorize`：多个身份源且没有 `idp_hint` 时，认证中心仍返回 `invalid_request`，选择页还没有做。
+多身份源选择页不在这里。多个身份源且没有 `idp_hint` 时，认证中心的 `/oauth2/authorize` 返回服务端渲染的选择页。
 
 ```bash
 npm test
